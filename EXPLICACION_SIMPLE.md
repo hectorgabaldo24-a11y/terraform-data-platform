@@ -2,7 +2,7 @@
 
 ## La idea general
 
-Imaginá que vas a construir un edificio (una **plataforma de datos** en la nube de Amazon, AWS). Antes de poner los muebles (los sistemas que procesan datos en tiempo real), hay que hacer los cimientos: el terreno, las paredes, las llaves y los permisos.
+Hice la analogia con la construccion de un edificio (una **plataforma de datos** en la nube de Amazon, AWS). Antes de poner los muebles (los sistemas que procesan datos en tiempo real), hay que hacer los cimientos: el terreno, las paredes, las llaves y los permisos.
 
 Este proyecto son esos cimientos. Todo está escrito como **código** con una herramienta llamada **Terraform**. En vez de hacer clic en la consola de AWS, escribimos "quiero esto" en archivos, y Terraform lo crea. Ventajas: se puede repetir, revisar, versionar y compartir con un equipo.
 
