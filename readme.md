@@ -1,183 +1,93 @@
-# Terraform Data Platform
+# Terraform Data Platform — Infraestructura base (Pre-entrega 1)
 
-Proyecto de práctica para diseñar el scaffolding inicial de una plataforma de datos sobre AWS utilizando Terraform.
+Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada para datos e IAM core. Prepara el terreno para los módulos de streaming (Kinesis / Flink).
 
-La infraestructura evolucionará posteriormente para incorporar servicios como Amazon Kinesis y Apache Flink.
-
-## Estructura del proyecto
+## Estructura
 
 ```text
-terraform-data-platform/
-│
-├── provider.tf
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars
-├── .gitignore
-└── README.md
+.
+├── bootstrap/            # Backend remoto (S3 + DynamoDB). Se aplica una sola vez, con estado local
+├── modules/
+│   ├── network/          # VPC, subredes privadas, route tables y S3 Gateway Endpoint
+│   └── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only
+├── environments/
+│   └── dev/              # Llama a los módulos y configura el backend
+├── .tflint.hcl           # Configuración de tflint (reglas terraform + aws)
+├── PLAN_OUTPUT.md        # Salida de terraform plan de environments/dev
+└── readme.md
 ```
 
-### provider.tf
+Para crear otro entorno (p. ej. `prod`) se copia `environments/dev`, se cambian `terraform.tfvars` y la `key` del backend; los módulos no se modifican.
 
-Define la versión mínima de Terraform y los providers utilizados por el proyecto.
+## Recursos que se crean
 
-Actualmente se utiliza el provider de AWS.
+| Capa | Recurso |
+|------|---------|
+| Bootstrap | Bucket S3 de tfstate (versionado, SSE AES256, sin acceso público) y tabla DynamoDB `LockID` para locking |
+| Network | VPC, N subredes privadas (una por AZ, mínimo 2), una route table por subred, security group por defecto sin reglas, S3 Gateway Endpoint asociado a todas las route tables privadas |
+| Network | **Sin** Internet Gateway, **sin** NAT Gateway, sin IPs públicas: no hay acceso directo desde internet |
+| Data lake | Bucket `data-platform-dev-bucket` con SSE y bloqueo de acceso público |
+| Identity | `processing-role` (asumible por Lambda y Managed Flink de la cuenta) con solo `s3:ListBucket`, `s3:GetObject`, `s3:PutObject` sobre un prefijo |
+| Identity | `audit-readonly-role` con `ReadOnlyAccess`, asumible solo con MFA |
 
-### main.tf
+El módulo `identity` ya soporta `kinesis_stream_arns`: cuando se le pasan ARNs de streams, agrega una política de lectura (`GetRecords`, `GetShardIterator`, `DescribeStream`, `ListShards`, `SubscribeToShard`) para Flink, sin usar `*`.
 
-Contiene los recursos principales de infraestructura.
+## Requisitos
 
-En esta primera etapa se utiliza un bucket S3 como recurso de ejemplo.
+* Terraform >= 1.5
+* Credenciales de AWS configuradas (`aws configure`, SSO o variables `AWS_*`)
+* [tflint](https://github.com/terraform-linters/tflint) (Windows: `winget install TerraformLinters.tflint`)
 
-### variables.tf
+## Despliegue
 
-Contiene las variables configurables del proyecto.
-
-Las variables actuales son:
-
-* `region`: región de AWS.
-* `project_name`: nombre del proyecto.
-* `environment`: ambiente de despliegue.
-
-Cada variable posee una descripción y un tipo de dato explícito para facilitar el mantenimiento.
-
-### outputs.tf
-
-Define los valores que Terraform mostrará como resultado del despliegue.
-
-Actualmente se muestra el nombre del bucket S3 creado.
-
-### terraform.tfvars
-
-Contiene los valores utilizados para las variables del proyecto.
-
-En esta práctica contiene valores de ejemplo para la región, proyecto y ambiente.
-
-En proyectos reales, este archivo no debería contener secretos ni credenciales y normalmente se gestiona de manera diferente según la estrategia de configuración adoptada.
-
-### .gitignore
-
-Evita versionar archivos temporales de Terraform, principalmente:
-
-* `.terraform/`
-* archivos `.tfstate`
-* logs y archivos temporales
-* archivos específicos del IDE
-
-El Terraform state no debe almacenarse en el repositorio Git.
-
-## Convención de nombres
-
-La convención utilizada para los recursos sigue el siguiente patrón:
-
-```text
-<project_name>-<environment>-<resource>
-```
-
-Por ejemplo:
-
-```text
-data-platform-dev-bucket
-```
-
-De esta manera podemos identificar rápidamente:
-
-* `data-platform`: proyecto.
-* `dev`: ambiente.
-* `bucket`: tipo de recurso.
-
-Esta convención permitirá posteriormente diferenciar recursos de desarrollo, testing y producción.
-
-## Inicialización
-
-Para inicializar el proyecto ejecutar:
+### 1. Bootstrap del backend (una sola vez)
 
 ```bash
+cd bootstrap
 terraform init
-```
-
-Este comando descarga los providers necesarios y prepara el directorio de trabajo de Terraform.
-
-## Validación
-
-Para validar la configuración:
-
-```bash
-terraform validate
-```
-
-También se puede utilizar:
-
-```bash
-terraform fmt
-```
-
-para aplicar el formato estándar de Terraform.
-
-## Plan
-
-Para visualizar los cambios que Terraform realizaría:
-
-```bash
-terraform plan
-```
-
-## Aplicación
-
-Para crear la infraestructura:
-
-```bash
 terraform apply
 ```
 
-Terraform solicitará confirmación antes de realizar los cambios.
+El bucket del state se llama `data-platform-tfstate-hector-659500704179` (los nombres de bucket son globales). Si otra persona lo despliega en su cuenta, debe usar un nombre propio: `terraform apply -var state_bucket_name=<nombre-unico>` y actualizar el mismo nombre en el bloque `backend "s3"` de `environments/dev/providers.tf`. El estado local del bootstrap no se versiona.
 
-También se puede utilizar:
+### 2. Entorno dev
 
 ```bash
-terraform apply -auto-approve
+cd environments/dev
+terraform init
+terraform validate
+terraform plan
+terraform apply
 ```
 
-aunque se recomienda evitar `-auto-approve` en ambientes productivos.
+### 3. Calidad
 
-## ¿Por qué separar los archivos?
-
-Aunque Terraform permite colocar toda la configuración en un único `main.tf`, separar la configuración por responsabilidad facilita el mantenimiento y la escalabilidad.
-
-La separación utilizada es:
-
-```text
-provider.tf     → configuración de Terraform y providers
-variables.tf    → parámetros configurables
-main.tf         → recursos de infraestructura
-outputs.tf      → información generada por Terraform
-terraform.tfvars → valores de configuración
+```bash
+terraform fmt -recursive
+terraform validate
+tflint --init        # una sola vez: descarga los plugins definidos en .tflint.hcl
+tflint --recursive
 ```
 
-Esta organización facilita que otros integrantes del equipo puedan localizar rápidamente cada parte de la infraestructura.
+Resultado actual: `terraform validate` y `tflint --recursive` sin errores ni advertencias. El `terraform plan` de dev (17 recursos a crear) está en [PLAN_OUTPUT.md](PLAN_OUTPUT.md).
 
-A medida que el proyecto crezca, los recursos también podrán dividirse en módulos y archivos específicos, por ejemplo:
+## Variables principales (`environments/dev/terraform.tfvars`)
 
-```text
-kinesis.tf
-flink.tf
-s3.tf
-iam.tf
-network.tf
-```
+| Variable | Descripción | Valor dev |
+|----------|-------------|-----------|
+| `region` | Región de AWS | `us-east-1` |
+| `project_name` | Nombre del proyecto | `data-platform` |
+| `environment` | `dev`, `staging` o `prod` | `dev` |
+| `vpc_cidr` | CIDR de la VPC | `10.0.0.0/16` |
+| `az_count` | AZs / subredes privadas | `2` |
+| `data_prefix` | Prefijo S3 accesible por el rol de procesamiento | `streaming` |
 
-## Próximos pasos
+## Outputs (inputs de la próxima pre-entrega)
 
-La evolución prevista de esta plataforma es incorporar:
+`vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `data_bucket_name`.
 
-1. Amazon S3.
-2. Amazon Kinesis.
-3. Procesamiento con Apache Flink.
-4. IAM y políticas de acceso.
-5. Networking.
-6. Observabilidad.
-7. Separación de ambientes.
-8. Backend remoto para Terraform State.
+## Seguridad
 
-El objetivo final es construir una plataforma de datos reproducible y administrada como infraestructura como código.
+* Ningún permiso usa `*` en acciones ni recursos propios (el rol de auditoría usa la política administrada `ReadOnlyAccess` de AWS).
+* El rol de procesamiento restringe `ListBucket` por condición `s3:prefix` y los objetos por ARN con prefijo.
+* El state está cifrado (SSE), versionado y con locking; `.gitignore` excluye `.terraform/`, `*.tfstate*` y planes.

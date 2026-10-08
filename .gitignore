@@ -26,3 +26,6 @@ override.tf.json
 # OS
 .DS_Store
 Thumbs.db
+# Planes
+*.tfplan
+tfplan
