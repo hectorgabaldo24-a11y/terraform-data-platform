@@ -1,8 +1,40 @@
 # Plan output
 
-Salida de `terraform plan` en `environments/dev` (backend remoto ya creado con `bootstrap/`).
+`terraform plan` ejecutado en `environments/dev` con el backend remoto (S3 + DynamoDB) ya inicializado.
+
+**Resultado: `Plan: 19 to add, 0 to change, 0 to destroy.` — sin errores.**
+
+## Qué demuestra este plan
+
+| Requisito de la consigna | Evidencia en el plan |
+|--------------------------|----------------------|
+| VPC con ≥ 2 subredes privadas en distintas AZ | `aws_subnet.private["us-east-1a"]` y `["us-east-1b"]`, ambas con `map_public_ip_on_launch = false` |
+| Sin acceso directo desde internet | No hay Internet Gateway, NAT Gateway ni rutas a internet; solo una route table por subred |
+| S3 Gateway Endpoint asociado a las route tables privadas | `aws_vpc_endpoint.s3` (tipo Gateway) con `route_table_ids` de las dos route tables privadas, y endpoint policy limitada al bucket del data lake |
+| Rol de procesamiento con `s3:ListBucket`, `GetObject`, `PutObject` sobre un prefijo | `aws_iam_policy.processing_s3`: `ListBucket` con condición `s3:prefix` y `GetObject`/`PutObject` sobre `<bucket>/streaming/*` |
+| Rol de auditoría de solo lectura | `aws_iam_role.audit` con `SecurityAudit`, asumible solo con MFA |
+| Backend con SSE y locking | Configurado en `environments/dev/backend.tf` (`encrypt = true`, `dynamodb_table`); recursos creados en `bootstrap/` |
+| Outputs | `vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `data_bucket_name` |
+
+## Salida completa
 
 ```text
+
+Warning: Deprecated Parameter
+
+The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
+instead.
+Acquiring state lock. This may take a few moments...
+module.identity.data.aws_caller_identity.current: Reading...
+module.network.data.aws_availability_zones.available: Reading...
+module.network.data.aws_region.current: Reading...
+module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
+module.identity.data.aws_iam_policy_document.processing_assume: Reading...
+module.identity.data.aws_iam_policy_document.audit_assume: Reading...
+module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
+module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
+module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
 
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
@@ -10,6 +42,41 @@ plan. Resource actions are indicated with the following symbols:
  <= read (data resources)
 
 Terraform will perform the following actions:
+
+  # data.aws_iam_policy_document.data_platform_tls will be read during apply
+  # (config refers to values not yet known)
+ <= data "aws_iam_policy_document" "data_platform_tls" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:*",
+            ]
+          + effect    = "Deny"
+          + resources = [
+              + (known after apply),
+              + (known after apply),
+            ]
+          + sid       = "DenyInsecureTransport"
+
+          + condition {
+              + test     = "Bool"
+              + values   = [
+                  + "false",
+                ]
+              + variable = "aws:SecureTransport"
+            }
+
+          + principals {
+              + identifiers = [
+                  + "*",
+                ]
+              + type        = "*"
+            }
+        }
+    }
 
   # aws_s3_bucket.data_platform will be created
   + resource "aws_s3_bucket" "data_platform" {
@@ -56,6 +123,14 @@ Terraform will perform the following actions:
       + website (known after apply)
     }
 
+  # aws_s3_bucket_policy.data_platform_tls will be created
+  + resource "aws_s3_bucket_policy" "data_platform_tls" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + policy = (known after apply)
+      + region = "us-east-1"
+    }
+
   # aws_s3_bucket_public_access_block.data_platform will be created
   + resource "aws_s3_bucket_public_access_block" "data_platform" {
       + block_public_acls       = true
@@ -81,6 +156,18 @@ Terraform will perform the following actions:
               + kms_master_key_id = (known after apply)
               + sse_algorithm     = "AES256"
             }
+        }
+    }
+
+  # aws_s3_bucket_versioning.data_platform will be created
+  + resource "aws_s3_bucket_versioning" "data_platform" {
+      + bucket = (known after apply)
+      + id     = (known after apply)
+      + region = "us-east-1"
+
+      + versioning_configuration {
+          + mfa_delete = (known after apply)
+          + status     = "Enabled"
         }
     }
 
@@ -231,7 +318,7 @@ Terraform will perform the following actions:
   # module.identity.aws_iam_role_policy_attachment.audit_readonly will be created
   + resource "aws_iam_role_policy_attachment" "audit_readonly" {
       + id         = (known after apply)
-      + policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+      + policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
       + role       = "data-platform-dev-audit-readonly-role"
     }
 
@@ -240,6 +327,37 @@ Terraform will perform the following actions:
       + id         = (known after apply)
       + policy_arn = (known after apply)
       + role       = "data-platform-dev-processing-role"
+    }
+
+  # module.network.data.aws_iam_policy_document.s3_endpoint[0] will be read during apply
+  # (config refers to values not yet known)
+ <= data "aws_iam_policy_document" "s3_endpoint" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:AbortMultipartUpload",
+              + "s3:GetObject",
+              + "s3:ListBucket",
+              + "s3:ListBucketMultipartUploads",
+              + "s3:PutObject",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + (known after apply),
+              + (known after apply),
+            ]
+          + sid       = "AllowDataBucketsOnly"
+
+          + principals {
+              + identifiers = [
+                  + "*",
+                ]
+              + type        = "AWS"
+            }
+        }
     }
 
   # module.network.aws_default_security_group.this will be created
@@ -449,7 +567,7 @@ Terraform will perform the following actions:
       + subnet_configuration (known after apply)
     }
 
-Plan: 17 to add, 0 to change, 0 to destroy.
+Plan: 19 to add, 0 to change, 0 to destroy.
 
 Changes to Outputs:
   + audit_role_arn      = (known after apply)
@@ -460,4 +578,9 @@ Changes to Outputs:
     ]
   + processing_role_arn = (known after apply)
   + vpc_id              = (known after apply)
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
 ```
