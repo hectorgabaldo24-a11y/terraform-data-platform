@@ -51,7 +51,7 @@ bootstrap/          → crea la caja fuerte y el cartel de "ocupado" (una sola v
 modules/network/    → molde de la red privada
 modules/identity/   → molde de los roles y permisos
 environments/dev/   → arma todo para el ambiente de desarrollo
-PLAN_OUTPUT.md      → el "borrador" de lo que Terraform va a crear (17 recursos)
+PLAN_OUTPUT.md      → el "borrador" de lo que Terraform va a crear (20 recursos)
 .tflint.hcl         → reglas del corrector de estilo/errores (tflint)
 ```
 
