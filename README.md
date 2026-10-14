@@ -12,6 +12,8 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 | Variables (entorno, región, CIDR) | [environments/dev/variables.tf](environments/dev/variables.tf) |
 | Outputs (`vpc_id`, `private_subnet_ids`, ARN de roles) | [environments/dev/outputs.tf](environments/dev/outputs.tf) |
 | Salida de `terraform plan` | [PLAN_OUTPUT.md](PLAN_OUTPUT.md) |
+| Evidencia por criterio de la rúbrica (HCL, seguridad, modularización, documentación) | [EVIDENCIA.md](EVIDENCIA.md) |
+| Reuso del módulo de red en otro entorno | [environments/prod](environments/prod) · [PLAN_OUTPUT_PROD.md](PLAN_OUTPUT_PROD.md) |
 
 ## Estructura
 
@@ -22,13 +24,16 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 │   ├── network/          # VPC, subredes privadas, route tables y S3 Gateway Endpoint
 │   └── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only
 ├── environments/
-│   └── dev/              # backend.tf, providers.tf, variables.tf, main.tf, outputs.tf, terraform.tfvars
+│   ├── dev/              # backend.tf, providers.tf, variables.tf, main.tf, outputs.tf, terraform.tfvars
+│   └── prod/             # Ejemplo de reuso de los módulos: solo cambian backend key y tfvars
 ├── .tflint.hcl           # Configuración de tflint (reglas terraform + aws)
 ├── PLAN_OUTPUT.md        # Salida de terraform plan de environments/dev
+├── PLAN_OUTPUT_PROD.md   # Plan de environments/prod (reuso de módulos)
+├── EVIDENCIA.md          # Evidencia por criterio de la rúbrica
 └── README.md
 ```
 
-Para crear otro entorno (p. ej. `prod`) se copia `environments/dev`, se cambian `terraform.tfvars` y la `key` del backend; los módulos no se modifican.
+Para crear otro entorno se copia `environments/dev`, se cambian `terraform.tfvars` y la `key` del backend; los módulos no se modifican. [`environments/prod`](environments/prod) es un ejemplo ya armado y planificado (CIDR `10.1.0.0/16`, 3 AZ).
 
 ## Recursos que se crean
 
