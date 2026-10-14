@@ -7,7 +7,7 @@ Ejecución real de los pasos 3 y 5 de [VERIFICACION.md](VERIFICACION.md) (más e
 | Dato | Valor |
 |------|-------|
 | Fecha | 2026-10-14 12:33 -0300 |
-| Commit base | `fa81b4c` (más `VERIFICACION.md` y el cambio del README, sin commitear) |
+| Commit base | `fa81b4c` (el código `.tf` es idéntico en `7329170`, que agrega esta guía y este registro) |
 | Cuenta AWS | `659500704179` (`us-east-1`), identidad `arn:aws:iam::659500704179:root` |
 
 Hashes del código verificado. Coinciden con los de [PLAN_OUTPUT_PROD.md](PLAN_OUTPUT_PROD.md) y [APPLY_OUTPUT.md](APPLY_OUTPUT.md), es decir, el código no cambió desde el apply:
