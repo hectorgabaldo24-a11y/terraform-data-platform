@@ -13,6 +13,8 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 | Outputs (`vpc_id`, `private_subnet_ids`, ARN de roles) | [environments/dev/outputs.tf](environments/dev/outputs.tf) |
 | Salida de `terraform plan` | [PLAN_OUTPUT.md](PLAN_OUTPUT.md) |
 | Salida de `terraform apply` y verificación real | [APPLY_OUTPUT.md](APPLY_OUTPUT.md) |
+| Instrucciones para reproducir y verificar todo, paso a paso | [VERIFICACION.md](VERIFICACION.md) |
+| Registro de una corrida real de esa verificación | [VERIFICACION_OUTPUT.md](VERIFICACION_OUTPUT.md) |
 | Evidencia por criterio de la rúbrica (HCL, seguridad, modularización, documentación) | [EVIDENCIA.md](EVIDENCIA.md) |
 | Reuso del módulo de red en otro entorno | [environments/prod](environments/prod) · [PLAN_OUTPUT_PROD.md](PLAN_OUTPUT_PROD.md) |
 
