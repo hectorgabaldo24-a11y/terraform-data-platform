@@ -1,5 +1,10 @@
+data "aws_caller_identity" "current" {}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
+
+  # Los nombres de bucket S3 son globales: se agrega el ID de cuenta para evitar colisiones.
+  data_bucket_name = "${local.name_prefix}-${data.aws_caller_identity.current.account_id}-bucket"
 
   tags = {
     Project     = var.project_name
@@ -10,7 +15,7 @@ locals {
 
 # Bucket del data lake (lo consumirán los módulos de streaming).
 resource "aws_s3_bucket" "data_platform" {
-  bucket = "${local.name_prefix}-bucket"
+  bucket = local.data_bucket_name
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "data_platform" {
