@@ -49,7 +49,22 @@ Para crear otro entorno se copia `environments/dev`, se cambian `terraform.tfvar
 
 El módulo `identity` ya soporta `kinesis_stream_arns`: cuando se le pasan ARNs de streams, agrega una política de lectura (`GetRecords`, `GetShardIterator`, `DescribeStream`, `ListShards`, `SubscribeToShard`) para Flink, sin usar `*`.
 
-> **Service-Linked Roles:** AWS permite un único SLR por servicio y cuenta. Si `terraform apply` falla con *"has been taken"*, ese SLR ya existe: quitar el servicio de `service_linked_role_services` en `terraform.tfvars` o importarlo con `terraform import`.
+### Chequeo previo del Service-Linked Role (antes de `terraform apply`)
+
+AWS permite **un único** SLR por servicio y cuenta. Verificá si el de Lake Formation ya existe:
+
+```bash
+# Linux/macOS/Git Bash (en Git Bash anteponer MSYS_NO_PATHCONV=1)
+aws iam list-roles --path-prefix /aws-service-role/lakeformation.amazonaws.com/   --query 'Roles[].RoleName' --output text
+```
+
+| Resultado | Qué hacer |
+|-----------|-----------|
+| Vacío (no existe) | Nada: `terraform apply` lo crea |
+| `AWSServiceRoleForLakeFormationDataAccess` y **no** está en el state | **Importarlo** (conserva el rol existente): `terraform import 'module.identity.aws_iam_service_linked_role.this["lakeformation.amazonaws.com"]' arn:aws:iam::<ACCOUNT_ID>:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess` |
+| Existe y no se quiere gestionar con Terraform | Poner `service_linked_role_services = []` en `terraform.tfvars` |
+
+Un segundo entorno de la misma cuenta (p. ej. `prod`) debe usar `[]`, porque `dev` ya lo gestiona. Si `apply` falla con *"has been taken"*, aplicar la fila correspondiente. Estado verificado en la cuenta de desarrollo: el rol **no existía** (solo estaban los SLR de Resource Explorer, Support y Trusted Advisor).
 
 ## Requisitos
 

@@ -95,6 +95,8 @@ Un ingeniero nuevo solo debe cambiar el nombre del bucket de estado (los nombres
 
 * `dynamodb_table` está marcado como *deprecated* en el backend S3 (Terraform recomienda `use_lockfile`). Se mantiene a propósito porque la consigna exige locking con DynamoDB; el plan confirma que el lock se adquiere (`Acquiring state lock`). Detalle en el README.
 
+* **Service-Linked Role:** se comprobó con `aws iam list-roles` y `aws iam get-role` que `AWSServiceRoleForLakeFormationDataAccess` no existe en la cuenta, y que no hay state previo. El README incluye el chequeo previo y cómo importarlo si ya existiera. No se usa un data source para crearlo condicionalmente porque haría que Terraform lo destruya en el segundo `plan`.
+
 ## Alcance
 
 Se ejecutaron `fmt`, `validate`, `tflint` y `plan` (dev y prod). **No se ejecutó `apply`**, por lo que los comandos de la sección *Verificación* del README (`aws ec2 describe-...`) no se probaron contra recursos desplegados.
