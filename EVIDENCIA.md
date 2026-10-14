@@ -104,6 +104,6 @@ Cada `PLAN_OUTPUT*.md` incluye una sección *Procedencia* con fecha, comando, co
 ## Alcance
 
 * `dev`: `fmt`, `validate`, `tflint`, `plan`, **`apply` exitoso** (20 recursos) y comandos de verificación del README ejecutados sobre la infraestructura real. Ver [APPLY_OUTPUT.md](APPLY_OUTPUT.md), que incluye el primer intento fallido (`BucketAlreadyExists`) y su corrección.
-* `bootstrap`: `validate`, `tflint` y `plan` sobre el state local: `Plan: 1 to add, 0 to change, 0 to destroy` (solo la política de TLS del bucket del state; separar el módulo en `main/variables/outputs/providers` no altera recursos). **Ese cambio está en el código pero pendiente de aplicar** en la cuenta.
+* `bootstrap`: `validate`, `tflint`, `plan` (`1 to add`: solo la política de TLS del bucket del state) y **`apply` exitoso** (`Apply complete! Resources: 1 added, 0 changed, 0 destroyed`). Un `plan` posterior en `bootstrap` y otro en `environments/dev` devolvieron exit code `0` (sin cambios), y el state de `dev` sigue accesible con la política activa. Separar el módulo en `main/variables/outputs/providers` no alteró recursos.
 * `prod`: solo `plan`; no se aplicó.
 * No se probó `terraform destroy`.
