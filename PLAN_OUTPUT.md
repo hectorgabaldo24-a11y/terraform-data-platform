@@ -1,8 +1,29 @@
 # Plan output
 
-`terraform plan` ejecutado en `environments/dev` con el backend remoto (S3 + DynamoDB) ya inicializado.
+`terraform plan` de `environments/dev` con el backend remoto (S3 + DynamoDB) inicializado.
 
 **Resultado: `Plan: 20 to add, 0 to change, 0 to destroy.` — sin errores.**
+
+## Procedencia (cómo verificar que corresponde al código actual)
+
+| Dato | Valor |
+|------|-------|
+| Fecha de ejecución | 2026-10-13 22:24 -0300 |
+| Comando | `cd environments/dev && terraform plan -no-color` |
+| Commit base | `a266a0b` (árbol de trabajo limpio) |
+| Terraform | Terraform v1.16.5 |
+| Cuenta AWS | `659500704179` (`us-east-1`) |
+| `apply` | **No ejecutado.** Es un `plan`: no se creó ningún recurso |
+
+Hashes del código planificado (no cambian con commits que solo tocan documentación):
+
+```text
+modules            0bd0b7adc45b
+environments/dev      ab02f6439547
+bootstrap          d1997fc2dea6
+```
+
+Verificación: `git rev-parse HEAD:modules HEAD:environments/dev HEAD:bootstrap` debe devolver estos hashes (en los primeros 12 caracteres). Si difieren, el código cambió después de este plan y hay que volver a ejecutarlo.
 
 ## Qué demuestra este plan
 
@@ -26,11 +47,11 @@ Warning: Deprecated Parameter
 The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
 instead.
 Acquiring state lock. This may take a few moments...
-module.network.data.aws_availability_zones.available: Reading...
 module.network.data.aws_region.current: Reading...
 module.identity.data.aws_caller_identity.current: Reading...
+module.network.data.aws_availability_zones.available: Reading...
 module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
-module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
+module.identity.data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
 module.identity.data.aws_iam_policy_document.processing_assume: Reading...
 module.identity.data.aws_iam_policy_document.audit_assume: Reading...
 module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
@@ -604,5 +625,4 @@ Changes to Outputs:
 
 Note: You didn't use the -out option to save this plan, so Terraform can't
 guarantee to take exactly these actions if you run "terraform apply" now.
-Releasing state lock. This may take a few moments...
 ```

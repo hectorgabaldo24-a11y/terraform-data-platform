@@ -97,6 +97,10 @@ Un ingeniero nuevo solo debe cambiar el nombre del bucket de estado (los nombres
 
 * **Service-Linked Role:** se comprobó con `aws iam list-roles` y `aws iam get-role` que `AWSServiceRoleForLakeFormationDataAccess` no existe en la cuenta, y que no hay state previo. El README incluye el chequeo previo y cómo importarlo si ya existiera. No se usa un data source para crearlo condicionalmente porque haría que Terraform lo destruya en el segundo `plan`.
 
+## Trazabilidad de los planes
+
+Cada `PLAN_OUTPUT*.md` incluye una sección *Procedencia* con fecha, comando, commit base, versión de Terraform y los hashes de árbol de `modules/`, `environments/<env>/` y `bootstrap/`. Esos hashes permiten comprobar con `git rev-parse` que el plan corresponde al código vigente. Los planes se regeneraron tras el último cambio de código y se contrastaron con los guardados antes: solo diferían en tiempos de lectura.
+
 ## Alcance
 
 Se ejecutaron `fmt`, `validate`, `tflint` y `plan` (dev y prod). **No se ejecutó `apply`**, por lo que los comandos de la sección *Verificación* del README (`aws ec2 describe-...`) no se probaron contra recursos desplegados.
