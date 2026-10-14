@@ -91,6 +91,10 @@ Un ingeniero nuevo solo debe cambiar el nombre del bucket de estado (los nombres
 | `terraform validate` y `tflint` | Sección 1 |
 | Repo sin temporales ni secretos | Sección 2 (`git ls-files`) |
 
+## Advertencias conocidas
+
+* `dynamodb_table` está marcado como *deprecated* en el backend S3 (Terraform recomienda `use_lockfile`). Se mantiene a propósito porque la consigna exige locking con DynamoDB; el plan confirma que el lock se adquiere (`Acquiring state lock`). Detalle en el README.
+
 ## Alcance
 
 Se ejecutaron `fmt`, `validate`, `tflint` y `plan` (dev y prod). **No se ejecutó `apply`**, por lo que los comandos de la sección *Verificación* del README (`aws ec2 describe-...`) no se probaron contra recursos desplegados.

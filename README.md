@@ -70,6 +70,8 @@ terraform apply
 
 El bucket del state se llama `data-platform-tfstate-hector-659500704179` (los nombres de bucket son globales). Si otra persona lo despliega en su cuenta, debe usar un nombre propio: `terraform apply -var state_bucket_name=<nombre-unico>` y actualizar el mismo nombre en el bloque `backend "s3"` de `environments/dev/providers.tf`. El estado local del bootstrap no se versiona.
 
+> **Advertencia esperada en `terraform init/plan`:** *"The parameter `dynamodb_table` is deprecated. Use parameter `use_lockfile` instead."* Terraform ≥ 1.10 ofrece locking nativo en S3 (`use_lockfile = true`), pero la consigna pide el locking mediante una tabla de DynamoDB, así que se mantiene `dynamodb_table`. Es una advertencia, no un error: el locking funciona (el plan muestra `Acquiring state lock`). Para migrar en el futuro: agregar `use_lockfile = true`, verificar el bloqueo y recién entonces quitar `dynamodb_table` y la tabla de `bootstrap/`.
+
 ### 2. Entorno dev
 
 ```bash
