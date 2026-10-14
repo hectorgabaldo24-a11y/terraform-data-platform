@@ -22,3 +22,8 @@ output "audit_role_arn" {
   description = "ARN del rol de auditoría de solo lectura"
   value       = module.identity.audit_role_arn
 }
+
+output "service_linked_role_arns" {
+  description = "ARNs de los Service-Linked Roles creados, por servicio"
+  value       = module.identity.service_linked_role_arns
+}

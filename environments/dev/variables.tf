@@ -35,3 +35,9 @@ variable "data_prefix" {
   type        = string
   default     = "streaming"
 }
+
+variable "service_linked_role_services" {
+  description = "Servicios AWS para los que se crea un Service-Linked Role (plano de control)"
+  type        = set(string)
+  default     = []
+}

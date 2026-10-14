@@ -2,7 +2,7 @@
 
 `terraform plan` ejecutado en `environments/dev` con el backend remoto (S3 + DynamoDB) ya inicializado.
 
-**Resultado: `Plan: 19 to add, 0 to change, 0 to destroy.` — sin errores.**
+**Resultado: `Plan: 20 to add, 0 to change, 0 to destroy.` — sin errores.**
 
 ## Qué demuestra este plan
 
@@ -12,9 +12,10 @@
 | Sin acceso directo desde internet | No hay Internet Gateway, NAT Gateway ni rutas a internet; solo una route table por subred |
 | S3 Gateway Endpoint asociado a las route tables privadas | `aws_vpc_endpoint.s3` (tipo Gateway) con `route_table_ids` de las dos route tables privadas, y endpoint policy limitada al bucket del data lake |
 | Rol de procesamiento con `s3:ListBucket`, `GetObject`, `PutObject` sobre un prefijo | `aws_iam_policy.processing_s3`: `ListBucket` con condición `s3:prefix` y `GetObject`/`PutObject` sobre `<bucket>/streaming/*` |
+| Service-Linked Role (plano de control) | `aws_iam_service_linked_role.this["lakeformation.amazonaws.com"]` |
 | Rol de auditoría de solo lectura | `aws_iam_role.audit` con `SecurityAudit`, asumible solo con MFA |
 | Backend con SSE y locking | Configurado en `environments/dev/backend.tf` (`encrypt = true`, `dynamodb_table`); recursos creados en `bootstrap/` |
-| Outputs | `vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `data_bucket_name` |
+| Outputs | `vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `service_linked_role_arns`, `data_bucket_name` |
 
 ## Salida completa
 
@@ -25,15 +26,15 @@ Warning: Deprecated Parameter
 The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
 instead.
 Acquiring state lock. This may take a few moments...
-module.identity.data.aws_caller_identity.current: Reading...
 module.network.data.aws_availability_zones.available: Reading...
 module.network.data.aws_region.current: Reading...
+module.identity.data.aws_caller_identity.current: Reading...
 module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
 module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.identity.data.aws_iam_policy_document.processing_assume: Reading...
 module.identity.data.aws_iam_policy_document.audit_assume: Reading...
-module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
+module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
 
 Terraform used the selected providers to generate the following execution
@@ -329,6 +330,23 @@ Terraform will perform the following actions:
       + role       = "data-platform-dev-processing-role"
     }
 
+  # module.identity.aws_iam_service_linked_role.this["lakeformation.amazonaws.com"] will be created
+  + resource "aws_iam_service_linked_role" "this" {
+      + arn              = (known after apply)
+      + aws_service_name = "lakeformation.amazonaws.com"
+      + create_date      = (known after apply)
+      + description      = "Service-Linked Role para lakeformation.amazonaws.com"
+      + id               = (known after apply)
+      + name             = (known after apply)
+      + path             = (known after apply)
+      + tags_all         = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "data-platform"
+        }
+      + unique_id        = (known after apply)
+    }
+
   # module.network.data.aws_iam_policy_document.s3_endpoint[0] will be read during apply
   # (config refers to values not yet known)
  <= data "aws_iam_policy_document" "s3_endpoint" {
@@ -567,20 +585,24 @@ Terraform will perform the following actions:
       + subnet_configuration (known after apply)
     }
 
-Plan: 19 to add, 0 to change, 0 to destroy.
+Plan: 20 to add, 0 to change, 0 to destroy.
 
 Changes to Outputs:
-  + audit_role_arn      = (known after apply)
-  + data_bucket_name    = (known after apply)
-  + private_subnet_ids  = [
+  + audit_role_arn           = (known after apply)
+  + data_bucket_name         = (known after apply)
+  + private_subnet_ids       = [
       + (known after apply),
       + (known after apply),
     ]
-  + processing_role_arn = (known after apply)
-  + vpc_id              = (known after apply)
+  + processing_role_arn      = (known after apply)
+  + service_linked_role_arns = {
+      + "lakeformation.amazonaws.com" = (known after apply)
+    }
+  + vpc_id                   = (known after apply)
 
 ─────────────────────────────────────────────────────────────────────────────
 
 Note: You didn't use the -out option to save this plan, so Terraform can't
 guarantee to take exactly these actions if you run "terraform apply" now.
+Releasing state lock. This may take a few moments...
 ```

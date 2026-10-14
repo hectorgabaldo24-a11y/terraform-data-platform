@@ -144,3 +144,16 @@ resource "aws_iam_role_policy_attachment" "audit_readonly" {
   role       = aws_iam_role.audit.name
   policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
 }
+
+# ---------------------------------------------------------------------------
+# Service-Linked Roles: roles administrados por AWS que el servicio asume en
+# nombre de la cuenta (plano de control). Su política la define AWS, no el módulo.
+# ---------------------------------------------------------------------------
+resource "aws_iam_service_linked_role" "this" {
+  for_each = var.service_linked_role_services
+
+  aws_service_name = each.value
+  description      = "Service-Linked Role para ${each.value}"
+
+  tags = var.tags
+}

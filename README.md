@@ -39,9 +39,12 @@ Para crear otro entorno (p. ej. `prod`) se copia `environments/dev`, se cambian 
 | Network | **Sin** Internet Gateway, **sin** NAT Gateway, sin IPs públicas: no hay acceso directo desde internet |
 | Data lake | Bucket `data-platform-dev-bucket` con SSE, versionado, bloqueo de acceso público y política que rechaza tráfico sin TLS |
 | Identity | `processing-role` (asumible por Lambda y Managed Flink de la cuenta) con solo `s3:ListBucket`, `s3:GetObject`, `s3:PutObject` sobre un prefijo |
+| Identity | Service-Linked Role de Lake Formation (`lakeformation.amazonaws.com`), configurable con `service_linked_role_services`; lo administra AWS y su política la define AWS |
 | Identity | `audit-readonly-role` con `SecurityAudit` (solo lectura de metadatos, sin leer datos), asumible solo con MFA |
 
 El módulo `identity` ya soporta `kinesis_stream_arns`: cuando se le pasan ARNs de streams, agrega una política de lectura (`GetRecords`, `GetShardIterator`, `DescribeStream`, `ListShards`, `SubscribeToShard`) para Flink, sin usar `*`.
+
+> **Service-Linked Roles:** AWS permite un único SLR por servicio y cuenta. Si `terraform apply` falla con *"has been taken"*, ese SLR ya existe: quitar el servicio de `service_linked_role_services` en `terraform.tfvars` o importarlo con `terraform import`.
 
 ## Requisitos
 
@@ -81,7 +84,7 @@ tflint --init        # una sola vez: descarga los plugins definidos en .tflint.h
 tflint --recursive
 ```
 
-Resultado actual: `terraform validate` y `tflint --recursive` sin errores ni advertencias. El `terraform plan` de dev (17 recursos a crear) está en [PLAN_OUTPUT.md](PLAN_OUTPUT.md).
+Resultado actual: `terraform validate` y `tflint --recursive` sin errores ni advertencias. El `terraform plan` de dev (20 recursos a crear) está en [PLAN_OUTPUT.md](PLAN_OUTPUT.md).
 
 ## Verificación
 
@@ -121,10 +124,11 @@ Para destruir todo lo del entorno: `terraform destroy` en `environments/dev`. El
 | `vpc_cidr` | CIDR de la VPC | `10.0.0.0/16` |
 | `az_count` | AZs / subredes privadas | `2` |
 | `data_prefix` | Prefijo S3 accesible por el rol de procesamiento | `streaming` |
+| `service_linked_role_services` | Servicios con Service-Linked Role | `["lakeformation.amazonaws.com"]` |
 
 ## Outputs (inputs de la próxima pre-entrega)
 
-`vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `data_bucket_name`.
+`vpc_id`, `private_subnet_ids`, `processing_role_arn`, `audit_role_arn`, `service_linked_role_arns`, `data_bucket_name`.
 
 ## Seguridad
 

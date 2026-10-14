@@ -30,6 +30,12 @@ variable "audit_trusted_principal_arns" {
   default     = []
 }
 
+variable "service_linked_role_services" {
+  description = "Servicios AWS (p. ej. lakeformation.amazonaws.com) para los que se crea el Service-Linked Role. Debe ser un SLR que no exista aún en la cuenta, de lo contrario AWS devuelve un error"
+  type        = set(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags adicionales aplicados a los recursos del módulo"
   type        = map(string)

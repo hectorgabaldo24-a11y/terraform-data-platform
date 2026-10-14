@@ -4,3 +4,5 @@ environment  = "dev"
 vpc_cidr     = "10.0.0.0/16"
 az_count     = 2
 data_prefix  = "streaming"
+# Service-Linked Role del plano de control para el Lakehouse (Lake Formation)
+service_linked_role_services = ["lakeformation.amazonaws.com"]

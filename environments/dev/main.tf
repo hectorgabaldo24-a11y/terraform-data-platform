@@ -83,4 +83,6 @@ module "identity" {
   name_prefix     = local.name_prefix
   data_bucket_arn = aws_s3_bucket.data_platform.arn
   data_prefix     = var.data_prefix
+
+  service_linked_role_services = var.service_linked_role_services
 }

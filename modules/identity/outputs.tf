@@ -12,3 +12,8 @@ output "audit_role_arn" {
   description = "ARN del rol de auditoría de solo lectura"
   value       = aws_iam_role.audit.arn
 }
+
+output "service_linked_role_arns" {
+  description = "ARNs de los Service-Linked Roles creados, por servicio"
+  value       = { for service, role in aws_iam_service_linked_role.this : service => role.arn }
+}
