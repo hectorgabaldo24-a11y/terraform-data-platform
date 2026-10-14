@@ -67,6 +67,32 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[each.key].id
 }
 
+# Endpoint policy: limita el tráfico por el endpoint a los buckets indicados.
+data "aws_iam_policy_document" "s3_endpoint" {
+  count = length(var.s3_endpoint_bucket_arns) > 0 ? 1 : 0
+
+  statement {
+    sid    = "AllowDataBucketsOnly"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:AbortMultipartUpload",
+      "s3:ListBucketMultipartUploads",
+    ]
+    resources = concat(
+      var.s3_endpoint_bucket_arns,
+      [for arn in var.s3_endpoint_bucket_arns : "${arn}/*"],
+    )
+
+    principals {
+      type        = "AWS"
+      identifiers = ["*"]
+    }
+  }
+}
+
 # Gateway Endpoint de S3: agrega una ruta al prefix list de S3 en cada tabla
 # de rutas privada, evitando NAT Gateway y costos de transferencia.
 resource "aws_vpc_endpoint" "s3" {
@@ -74,6 +100,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = [for rt in aws_route_table.private : rt.id]
+  policy            = length(var.s3_endpoint_bucket_arns) > 0 ? data.aws_iam_policy_document.s3_endpoint[0].json : null
 
   tags = merge(var.tags, { Name = "${var.name_prefix}-s3-gateway-endpoint" })
 }

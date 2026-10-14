@@ -138,7 +138,9 @@ resource "aws_iam_role" "audit" {
   tags = var.tags
 }
 
+# SecurityAudit: solo lectura de metadatos/configuración. A diferencia de
+# ReadOnlyAccess, no permite leer el contenido de los datos (p. ej. s3:GetObject).
 resource "aws_iam_role_policy_attachment" "audit_readonly" {
   role       = aws_iam_role.audit.name
-  policy_arn = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  policy_arn = "arn:aws:iam::aws:policy/SecurityAudit"
 }

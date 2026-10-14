@@ -1,4 +1,4 @@
-/* Versión de Terraform, providers y backend remoto (S3 + DynamoDB). */
+/* Versión de Terraform y providers. El backend está en backend.tf. */
 terraform {
   required_version = ">= 1.5.0"
 
@@ -7,16 +7,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-  }
-
-  # Los backends no admiten variables. Los nombres deben coincidir con los
-  # creados en bootstrap/.
-  backend "s3" {
-    bucket         = "data-platform-tfstate-hector-659500704179"
-    key            = "data-platform/dev/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "data-platform-tfstate-lock"
   }
 }
 

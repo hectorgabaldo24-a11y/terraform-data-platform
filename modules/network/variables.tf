@@ -30,6 +30,12 @@ variable "subnet_newbits" {
   default     = 8
 }
 
+variable "s3_endpoint_bucket_arns" {
+  description = "ARNs de los buckets accesibles a través del S3 Gateway Endpoint. Si es vacío se usa la política por defecto (todo S3)"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags adicionales aplicados a los recursos del módulo"
   type        = map(string)
