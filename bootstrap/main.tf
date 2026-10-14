@@ -1,42 +1,9 @@
 /*
 Bootstrap del backend remoto. Se ejecuta UNA sola vez, con estado local,
 antes de inicializar environments/dev. Crea:
-  - Bucket S3 versionado, cifrado (SSE) y sin acceso público para el tfstate.
+  - Bucket S3 versionado, cifrado (SSE), sin acceso público y que exige TLS, para el tfstate.
   - Tabla DynamoDB para el state locking.
 */
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-
-variable "region" {
-  description = "Región de AWS donde se crea el backend"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "state_bucket_name" {
-  description = "Nombre (globalmente único) del bucket S3 del tfstate"
-  type        = string
-  default     = "data-platform-tfstate-hector-659500704179"
-}
-
-variable "lock_table_name" {
-  description = "Nombre de la tabla DynamoDB usada para el state locking"
-  type        = string
-  default     = "data-platform-tfstate-lock"
-}
-
 resource "aws_s3_bucket" "state" {
   bucket = var.state_bucket_name
 
@@ -72,6 +39,34 @@ resource "aws_s3_bucket_public_access_block" "state" {
   restrict_public_buckets = true
 }
 
+# Rechaza cualquier acceso al bucket del state que no use TLS.
+data "aws_iam_policy_document" "state_tls" {
+  statement {
+    sid       = "DenyInsecureTransport"
+    effect    = "Deny"
+    actions   = ["s3:*"]
+    resources = [aws_s3_bucket.state.arn, "${aws_s3_bucket.state.arn}/*"]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "state_tls" {
+  bucket = aws_s3_bucket.state.id
+  policy = data.aws_iam_policy_document.state_tls.json
+
+  depends_on = [aws_s3_bucket_public_access_block.state]
+}
+
 resource "aws_dynamodb_table" "lock" {
   name         = var.lock_table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -85,14 +80,4 @@ resource "aws_dynamodb_table" "lock" {
   point_in_time_recovery {
     enabled = true
   }
-}
-
-output "state_bucket" {
-  description = "Bucket S3 del backend"
-  value       = aws_s3_bucket.state.id
-}
-
-output "lock_table" {
-  description = "Tabla DynamoDB de locking"
-  value       = aws_dynamodb_table.lock.name
 }

@@ -8,7 +8,7 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 |---------------------------|------------|
 | Módulos `network` e `identity` | [modules/network](modules/network), [modules/identity](modules/identity) |
 | Entorno que llama a los módulos | [environments/dev/main.tf](environments/dev/main.tf) |
-| Backend S3 con SSE + locking DynamoDB | Config: [environments/dev/backend.tf](environments/dev/backend.tf) · Recursos: [bootstrap/main.tf](bootstrap/main.tf) |
+| Backend S3 con SSE + locking DynamoDB | Config: [environments/dev/backend.tf](environments/dev/backend.tf) · Recursos: [bootstrap/main.tf](bootstrap/main.tf) (variables en `variables.tf`, valores en `terraform.tfvars`) |
 | Variables (entorno, región, CIDR) | [environments/dev/variables.tf](environments/dev/variables.tf) |
 | Outputs (`vpc_id`, `private_subnet_ids`, ARN de roles) | [environments/dev/outputs.tf](environments/dev/outputs.tf) |
 | Salida de `terraform plan` | [PLAN_OUTPUT.md](PLAN_OUTPUT.md) |
@@ -20,7 +20,7 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 
 ```text
 .
-├── bootstrap/            # Backend remoto (S3 + DynamoDB). Se aplica una sola vez, con estado local
+├── bootstrap/            # Backend remoto (S3 + DynamoDB): main, variables, outputs, providers, tfvars. Se aplica una vez, con estado local
 ├── modules/
 │   ├── network/          # VPC, subredes privadas, route tables y S3 Gateway Endpoint
 │   └── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only
@@ -41,7 +41,7 @@ Para crear otro entorno se copia `environments/dev`, se cambian `terraform.tfvar
 
 | Capa | Recurso |
 |------|---------|
-| Bootstrap | Bucket S3 de tfstate (versionado, SSE AES256, sin acceso público) y tabla DynamoDB `LockID` para locking |
+| Bootstrap | Bucket S3 de tfstate (versionado, SSE AES256, sin acceso público, política que exige TLS) y tabla DynamoDB `LockID` para locking |
 | Network | VPC, N subredes privadas (una por AZ, mínimo 2), una route table por subred, security group por defecto sin reglas, S3 Gateway Endpoint asociado a todas las route tables privadas, con endpoint policy que solo permite los buckets del data lake |
 | Network | **Sin** Internet Gateway, **sin** NAT Gateway, sin IPs públicas: no hay acceso directo desde internet |
 | Data lake | Bucket `data-platform-dev-<ACCOUNT_ID>-bucket` (el ID de cuenta evita colisiones, los nombres S3 son globales) con SSE, versionado, bloqueo de acceso público y política que rechaza tráfico sin TLS |
@@ -85,7 +85,7 @@ terraform init
 terraform apply
 ```
 
-El bucket del state se llama `data-platform-tfstate-hector-659500704179` (los nombres de bucket son globales). Si otra persona lo despliega en su cuenta, debe usar un nombre propio: `terraform apply -var state_bucket_name=<nombre-unico>` y actualizar el mismo nombre en el bloque `backend "s3"` de `environments/dev/providers.tf`. El estado local del bootstrap no se versiona.
+El bucket del state se llama `data-platform-tfstate-hector-659500704179` y se define en [bootstrap/terraform.tfvars](bootstrap/terraform.tfvars) (los nombres de bucket son globales). Si otra persona lo despliega en su cuenta, debe editar `state_bucket_name` en ese archivo y poner el mismo nombre en el bloque `backend "s3"` de `environments/*/backend.tf`. El bucket del state exige TLS, está versionado, cifrado y sin acceso público. El estado local del bootstrap (`bootstrap/terraform.tfstate`) no se versiona: conviene respaldarlo fuera del repo.
 
 > **Advertencia esperada en `terraform init/plan`:** *"The parameter `dynamodb_table` is deprecated. Use parameter `use_lockfile` instead."* Terraform ≥ 1.10 ofrece locking nativo en S3 (`use_lockfile = true`), pero la consigna pide el locking mediante una tabla de DynamoDB, así que se mantiene `dynamodb_table`. Es una advertencia, no un error: el locking funciona (el plan muestra `Acquiring state lock`). Para migrar en el futuro: agregar `use_lockfile = true`, verificar el bloqueo y recién entonces quitar `dynamodb_table` y la tabla de `bootstrap/`.
 

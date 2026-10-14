@@ -99,10 +99,11 @@ Un ingeniero nuevo solo debe cambiar el nombre del bucket de estado (los nombres
 
 ## Trazabilidad de los planes
 
-Cada `PLAN_OUTPUT*.md` incluye una sección *Procedencia* con fecha, comando, commit base, versión de Terraform y los hashes de árbol de `modules/`, `environments/<env>/` y `bootstrap/`. Esos hashes permiten comprobar con `git rev-parse` que el plan corresponde al código vigente. Los planes se regeneraron tras el último cambio de código y se contrastaron con los guardados antes: solo diferían en tiempos de lectura.
+Cada `PLAN_OUTPUT*.md` incluye una sección *Procedencia* con fecha, comando, commit base, versión de Terraform y los hashes de árbol de `modules/` y `environments/<env>/` (el `bootstrap/` es independiente de esos planes). Esos hashes permiten comprobar con `git rev-parse` que el plan corresponde al código vigente. Los planes se regeneraron tras el último cambio de código y se contrastaron con los guardados antes: solo diferían en tiempos de lectura.
 
 ## Alcance
 
 * `dev`: `fmt`, `validate`, `tflint`, `plan`, **`apply` exitoso** (20 recursos) y comandos de verificación del README ejecutados sobre la infraestructura real. Ver [APPLY_OUTPUT.md](APPLY_OUTPUT.md), que incluye el primer intento fallido (`BucketAlreadyExists`) y su corrección.
+* `bootstrap`: `validate`, `tflint` y `plan` sobre el state local: `Plan: 1 to add, 0 to change, 0 to destroy` (solo la política de TLS del bucket del state; separar el módulo en `main/variables/outputs/providers` no altera recursos). **Ese cambio está en el código pero pendiente de aplicar** en la cuenta.
 * `prod`: solo `plan`; no se aplicó.
 * No se probó `terraform destroy`.

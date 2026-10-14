@@ -29,3 +29,6 @@ Thumbs.db
 # Planes
 *.tfplan
 tfplan
+
+# Archivos comprimidos (pueden contener state o providers)
+*.zip

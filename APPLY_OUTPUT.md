@@ -1,7 +1,7 @@
 # Apply output — environments/dev
 
 `terraform apply` ejecutado sobre la cuenta `659500704179` (`us-east-1`), con backend remoto (S3 + DynamoDB).
-Código: commit con árboles `modules 0bd0b7adc45b` · `environments/dev eedb071b10eb` · `bootstrap d1997fc2dea6` (ver `PLAN_OUTPUT.md`).
+Código: commit con árboles `modules 0bd0b7adc45b` · `environments/dev eedb071b10eb` (ver `PLAN_OUTPUT.md`).
 
 **Resultado final: `Apply complete! Resources: 8 added, 0 changed, 0 destroyed.` (más 12 del primer intento = 20 recursos).**
 

@@ -21,10 +21,9 @@ Hashes del código planificado (no cambian con commits que solo tocan documentac
 ```text
 modules            0bd0b7adc45b
 environments/dev      eedb071b10eb
-bootstrap          d1997fc2dea6
 ```
 
-Verificación: `git rev-parse HEAD:modules HEAD:environments/dev HEAD:bootstrap` debe devolver estos hashes (primeros 12 caracteres). Si difieren, el código cambió después de este plan y hay que volver a ejecutarlo.
+Verificación: `git rev-parse HEAD:modules HEAD:environments/dev` debe devolver estos hashes (primeros 12 caracteres). Si difieren, el código cambió después de este plan y hay que volver a ejecutarlo.
 
 ## Qué demuestra este plan
 
