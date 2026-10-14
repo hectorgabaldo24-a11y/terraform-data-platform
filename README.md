@@ -12,6 +12,7 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 | Variables (entorno, región, CIDR) | [environments/dev/variables.tf](environments/dev/variables.tf) |
 | Outputs (`vpc_id`, `private_subnet_ids`, ARN de roles) | [environments/dev/outputs.tf](environments/dev/outputs.tf) |
 | Salida de `terraform plan` | [PLAN_OUTPUT.md](PLAN_OUTPUT.md) |
+| Salida de `terraform apply` y verificación real | [APPLY_OUTPUT.md](APPLY_OUTPUT.md) |
 | Evidencia por criterio de la rúbrica (HCL, seguridad, modularización, documentación) | [EVIDENCIA.md](EVIDENCIA.md) |
 | Reuso del módulo de red en otro entorno | [environments/prod](environments/prod) · [PLAN_OUTPUT_PROD.md](PLAN_OUTPUT_PROD.md) |
 
@@ -28,6 +29,7 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 │   └── prod/             # Ejemplo de reuso de los módulos: solo cambian backend key y tfvars
 ├── .tflint.hcl           # Configuración de tflint (reglas terraform + aws)
 ├── PLAN_OUTPUT.md        # Salida de terraform plan de environments/dev
+├── APPLY_OUTPUT.md       # Apply de dev y verificación contra AWS
 ├── PLAN_OUTPUT_PROD.md   # Plan de environments/prod (reuso de módulos)
 ├── EVIDENCIA.md          # Evidencia por criterio de la rúbrica
 └── README.md
@@ -42,7 +44,7 @@ Para crear otro entorno se copia `environments/dev`, se cambian `terraform.tfvar
 | Bootstrap | Bucket S3 de tfstate (versionado, SSE AES256, sin acceso público) y tabla DynamoDB `LockID` para locking |
 | Network | VPC, N subredes privadas (una por AZ, mínimo 2), una route table por subred, security group por defecto sin reglas, S3 Gateway Endpoint asociado a todas las route tables privadas, con endpoint policy que solo permite los buckets del data lake |
 | Network | **Sin** Internet Gateway, **sin** NAT Gateway, sin IPs públicas: no hay acceso directo desde internet |
-| Data lake | Bucket `data-platform-dev-bucket` con SSE, versionado, bloqueo de acceso público y política que rechaza tráfico sin TLS |
+| Data lake | Bucket `data-platform-dev-<ACCOUNT_ID>-bucket` (el ID de cuenta evita colisiones, los nombres S3 son globales) con SSE, versionado, bloqueo de acceso público y política que rechaza tráfico sin TLS |
 | Identity | `processing-role` (asumible por Lambda y Managed Flink de la cuenta) con solo `s3:ListBucket`, `s3:GetObject`, `s3:PutObject` sobre un prefijo |
 | Identity | Service-Linked Role de Lake Formation (`lakeformation.amazonaws.com`), configurable con `service_linked_role_services`; lo administra AWS y su política la define AWS |
 | Identity | `audit-readonly-role` con `SecurityAudit` (solo lectura de metadatos, sin leer datos), asumible solo con MFA |

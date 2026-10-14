@@ -1,7 +1,7 @@
 # Evidencia por criterio de la rúbrica
 
 Todas las salidas son reales, ejecutadas sobre este repositorio (Terraform 1.16.5, tflint 0.64.0, AWS provider 6.x).
-Los planes se ejecutaron contra AWS, pero **no se hizo `apply`**: ver "Alcance" al final.
+Los planes y el `apply` de `dev` se ejecutaron contra AWS: ver [APPLY_OUTPUT.md](APPLY_OUTPUT.md).
 
 ## 1. Calidad del HCL
 
@@ -103,4 +103,6 @@ Cada `PLAN_OUTPUT*.md` incluye una sección *Procedencia* con fecha, comando, co
 
 ## Alcance
 
-Se ejecutaron `fmt`, `validate`, `tflint` y `plan` (dev y prod). **No se ejecutó `apply`**, por lo que los comandos de la sección *Verificación* del README (`aws ec2 describe-...`) no se probaron contra recursos desplegados.
+* `dev`: `fmt`, `validate`, `tflint`, `plan`, **`apply` exitoso** (20 recursos) y comandos de verificación del README ejecutados sobre la infraestructura real. Ver [APPLY_OUTPUT.md](APPLY_OUTPUT.md), que incluye el primer intento fallido (`BucketAlreadyExists`) y su corrección.
+* `prod`: solo `plan`; no se aplicó.
+* No se probó `terraform destroy`.

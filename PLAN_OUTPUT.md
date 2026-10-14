@@ -1,6 +1,6 @@
 # Plan output
 
-`terraform plan` de `environments/dev` con el backend remoto (S3 + DynamoDB) inicializado.
+`terraform plan` de `environments/dev` sobre estado vacío. El bucket del data lake incluye el ID de cuenta para evitar colisiones globales de nombre.
 
 **Resultado: `Plan: 20 to add, 0 to change, 0 to destroy.` — sin errores.**
 
@@ -8,22 +8,23 @@
 
 | Dato | Valor |
 |------|-------|
-| Fecha de ejecución | 2026-10-13 22:24 -0300 |
-| Comando | `cd environments/dev && terraform plan -no-color` |
-| Commit base | `a266a0b` (árbol de trabajo limpio) |
+| Fecha de ejecución | 2026-10-13 22:31 -0300 |
+| Comando | `cd environments/dev && terraform plan -no-color (sin backend remoto, estado vacío)` |
+| Commit base | `3692522` (árbol de trabajo limpio) |
 | Terraform | Terraform v1.16.5 |
 | Cuenta AWS | `659500704179` (`us-east-1`) |
-| `apply` | **No ejecutado.** Es un `plan`: no se creó ningún recurso |
+| Estado de partida | Estado vacío (copia sin backend remoto), para mostrar el plan completo de los 20 recursos |
+| `apply` | Ejecutado después de este plan: ver [APPLY_OUTPUT.md](APPLY_OUTPUT.md) |
 
 Hashes del código planificado (no cambian con commits que solo tocan documentación):
 
 ```text
 modules            0bd0b7adc45b
-environments/dev      ab02f6439547
+environments/dev      eedb071b10eb
 bootstrap          d1997fc2dea6
 ```
 
-Verificación: `git rev-parse HEAD:modules HEAD:environments/dev HEAD:bootstrap` debe devolver estos hashes (en los primeros 12 caracteres). Si difieren, el código cambió después de este plan y hay que volver a ejecutarlo.
+Verificación: `git rev-parse HEAD:modules HEAD:environments/dev HEAD:bootstrap` debe devolver estos hashes (primeros 12 caracteres). Si difieren, el código cambió después de este plan y hay que volver a ejecutarlo.
 
 ## Qué demuestra este plan
 
@@ -41,21 +42,17 @@ Verificación: `git rev-parse HEAD:modules HEAD:environments/dev HEAD:bootstrap`
 ## Salida completa
 
 ```text
-
-Warning: Deprecated Parameter
-
-The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
-instead.
-Acquiring state lock. This may take a few moments...
-module.network.data.aws_region.current: Reading...
-module.identity.data.aws_caller_identity.current: Reading...
 module.network.data.aws_availability_zones.available: Reading...
+module.identity.data.aws_caller_identity.current: Reading...
+data.aws_caller_identity.current: Reading...
+module.network.data.aws_region.current: Reading...
 module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
-module.identity.data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
+module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.identity.data.aws_iam_policy_document.processing_assume: Reading...
 module.identity.data.aws_iam_policy_document.audit_assume: Reading...
-module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
 module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
+module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
+data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
 
 Terraform used the selected providers to generate the following execution
@@ -105,7 +102,7 @@ Terraform will perform the following actions:
       + acceleration_status         = (known after apply)
       + acl                         = (known after apply)
       + arn                         = (known after apply)
-      + bucket                      = "data-platform-dev-bucket"
+      + bucket                      = "data-platform-dev-659500704179-bucket"
       + bucket_domain_name          = (known after apply)
       + bucket_namespace            = (known after apply)
       + bucket_prefix               = (known after apply)
