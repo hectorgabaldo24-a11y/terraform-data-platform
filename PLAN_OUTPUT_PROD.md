@@ -8,9 +8,9 @@
 
 | Dato | Valor |
 |------|-------|
-| Fecha de ejecución | 2026-10-13 22:31 -0300 |
+| Fecha de ejecución | 2026-10-13 22:57 -0300 |
 | Comando | `cd environments/prod && terraform plan -no-color` |
-| Commit base | `3692522` (árbol de trabajo limpio) |
+| Commit base | `839ba54` (árbol de trabajo limpio) |
 | Terraform | Terraform v1.16.5 |
 | Cuenta AWS | `659500704179` (`us-east-1`) |
 | `apply` | **No ejecutado en prod.** Solo `plan` |
@@ -33,16 +33,16 @@ Warning: Deprecated Parameter
 The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
 instead.
 Acquiring state lock. This may take a few moments...
-module.network.data.aws_region.current: Reading...
-data.aws_caller_identity.current: Reading...
 module.network.data.aws_availability_zones.available: Reading...
+data.aws_caller_identity.current: Reading...
 module.identity.data.aws_caller_identity.current: Reading...
+module.network.data.aws_region.current: Reading...
 module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
-module.identity.data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
+module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.identity.data.aws_iam_policy_document.processing_assume: Reading...
 module.identity.data.aws_iam_policy_document.audit_assume: Reading...
-module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
+module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
 module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
 

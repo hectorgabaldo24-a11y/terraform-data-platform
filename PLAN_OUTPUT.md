@@ -8,9 +8,9 @@
 
 | Dato | Valor |
 |------|-------|
-| Fecha de ejecución | 2026-10-13 22:31 -0300 |
+| Fecha de ejecución | 2026-10-13 22:57 -0300 |
 | Comando | `cd environments/dev && terraform plan -no-color (sin backend remoto, estado vacío)` |
-| Commit base | `3692522` (árbol de trabajo limpio) |
+| Commit base | `839ba54` (árbol de trabajo limpio) |
 | Terraform | Terraform v1.16.5 |
 | Cuenta AWS | `659500704179` (`us-east-1`) |
 | Estado de partida | Estado vacío (copia sin backend remoto), para mostrar el plan completo de los 20 recursos |
@@ -41,17 +41,17 @@ Verificación: `git rev-parse HEAD:modules HEAD:environments/dev` debe devolver 
 ## Salida completa
 
 ```text
+module.network.data.aws_region.current: Reading...
 module.network.data.aws_availability_zones.available: Reading...
 module.identity.data.aws_caller_identity.current: Reading...
 data.aws_caller_identity.current: Reading...
-module.network.data.aws_region.current: Reading...
 module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
+data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.identity.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
 module.identity.data.aws_iam_policy_document.processing_assume: Reading...
 module.identity.data.aws_iam_policy_document.audit_assume: Reading...
-module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
-data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
+module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
 module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
 
 Terraform used the selected providers to generate the following execution
