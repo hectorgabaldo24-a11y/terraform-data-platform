@@ -327,3 +327,19 @@ Estado actualizado del checkpoint:
 - [x] Formato JSON por línea validado en la segunda prueba.
 - [x] 100 registros y sus IDs verificados.
 - [ ] Revisar los cambios de Git y preparar el commit.
+
+### Evidencia de entrega en S3
+
+Comando ejecutado:
+
+```powershell
+aws s3 ls s3://data-platform-dev-659500704179-bucket/ingesta/ --recursive
+PS C:\Users\HectorGabaldo\Documents\Cursos\Terraform\terraform-data-platform> aws s3 ls s3://data-platform-dev-659500704179-bucket/ingesta/ --recursive
+2026-10-15 22:59:51        532 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-01-58-50-9832922e-1b28-400c-8cc5-5e7e83c83f48.gz
+2026-10-15 22:59:51        722 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-01-58-50-a5fec46c-02dc-445d-a872-ecd9dc711514.gz
+2026-10-15 23:07:57        724 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-06-54-571abf9b-4adf-4969-884a-183a7ee9a766.gz
+2026-10-15 23:08:02        532 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-06-54-fccaf5b4-b13f-482d-bb79-f6fa02dc5708.gz
+2026-10-15 23:27:18        542 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-26-12-a1ba6215-3b03-4c05-9e4e-23536ced3c86.gz
+2026-10-15 23:27:13        731 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-26-12-dd973b1a-2dc0-44d4-a2ac-e387025d1085.gz
+2026-10-15 23:38:06         89 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-37-00-a5a54295-4c04-4bc0-a86e-172b444ff124.gz
+PS C:\Users\HectorGabaldo\Documents\Cursos\Terraform\terraform-data-platform> 
