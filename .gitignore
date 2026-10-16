@@ -32,3 +32,6 @@ tfplan
 
 # Archivos comprimidos (pueden contener state o providers)
 *.zip
+
+# Evidencias locales de pruebas de Firehose
+evidencias/

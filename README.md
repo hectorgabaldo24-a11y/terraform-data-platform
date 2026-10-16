@@ -161,3 +161,169 @@ Para destruir todo lo del entorno: `terraform destroy` en `environments/dev`. El
 * Ningún permiso usa `*` en acciones ni recursos propios (el rol de auditoría usa la política administrada `SecurityAudit` de AWS, que solo lee configuración). Los únicos comodines son `Principal: "*"` en una política de **Deny** de TLS del bucket y en la endpoint policy, que AWS exige para esos tipos de política.
 * El rol de procesamiento restringe `ListBucket` por condición `s3:prefix` y los objetos por ARN con prefijo.
 * El state está cifrado (SSE), versionado y con locking; `.gitignore` excluye `.terraform/`, `*.tfstate*` y planes.
+
+
+@'
+
+---
+
+## Checkpoint 2 — Ingesta en tiempo real con Amazon Kinesis
+
+### 1. Objetivo
+
+Implementar una ingesta de eventos en AWS utilizando Amazon Kinesis Data Streams, Amazon Data Firehose y Amazon S3, administrando la infraestructura mediante Terraform.
+
+### 2. Arquitectura implementada
+
+Python (boto3)
+  -> Kinesis Data Streams
+  -> Amazon Data Firehose
+  -> Amazon S3 (zona Bronze)
+
+### 3. Recursos desplegados
+
+| Recurso | Configuración |
+|---|---|
+| Kinesis Data Stream | `data-platform-dev-events` |
+| Modo de capacidad | PROVISIONED |
+| Cantidad de shards | 2 |
+| Cifrado de Kinesis | KMS |
+| Firehose | `data-platform-dev-bronze` |
+| Destino | Bucket S3 de desarrollo |
+| Buffer de Firehose | 5 MB o 60 segundos |
+| Compresión de salida | GZIP |
+| Alarmas | Lectura y escritura excedidas |
+
+Los recursos se administran desde el módulo `modules/kinesis/`, invocado desde `environments/dev/main.tf`.
+
+### 4. Productor de eventos
+
+Se implementó el productor Python en:
+
+- `scripts/kinesis_producer.py`
+- `scripts/requirements.txt`
+
+La prueba envió 100 registros JSON a `data-platform-dev-events`, utilizando boto3 y 10 claves de partición diferentes (`cliente-001` a `cliente-010`).
+
+Para ejecutar la prueba:
+
+```powershell
+python -m pip install -r .\scripts\requirements.txt
+python .\scripts\kinesis_producer.py
+```
+
+Resultado informado por el productor:
+
+```text
+Proceso terminado. Registros enviados: 100
+Stream: data-platform-dev-events
+Claves de partición: 10 clientes diferentes
+```
+
+### 5. Validación de la infraestructura
+
+Se verificó mediante AWS CLI que Kinesis y Firehose estuvieran activos.
+
+Comandos utilizados:
+
+```powershell
+aws kinesis describe-stream-summary `
+  --stream-name data-platform-dev-events `
+  --query "StreamDescriptionSummary.{Estado:StreamStatus,Shards:OpenShardCount,Cifrado:EncryptionType}" `
+  --output table
+```
+
+```powershell
+aws firehose describe-delivery-stream `
+  --delivery-stream-name data-platform-dev-bronze `
+  --query "DeliveryStreamDescription.{Estado:DeliveryStreamStatus,Destino:Destinations[0].ExtendedS3DestinationDescription.BucketARN}" `
+  --output table
+```
+
+Resultados observados:
+
+- Kinesis: `ACTIVE`.
+- Shards abiertos: `2`.
+- Cifrado: `KMS`.
+- Firehose: `ACTIVE`.
+
+### 6. Validación de la entrega a S3
+
+Se verificó la existencia de dos archivos GZIP en el bucket de desarrollo.
+
+Prefijo observado:
+
+```text
+ingesta/year=2026/month=10/day=16/
+```
+
+Comando de verificación:
+
+```powershell
+aws s3 ls s3://data-platform-dev-659500704179-bucket/ingesta/ --recursive
+```
+
+Se descargaron los dos archivos y se comprobó que podían descomprimirse y contenían eventos JSON con campos como `event_id`, `event_type`, `cliente_id`, `importe` y `timestamp`.
+
+Los archivos observados tenían tamaños de 532 y 722 bytes.
+
+**Resultado:** se confirmó la entrega de datos desde Kinesis a través de Firehose hasta S3.
+
+### 7. Evidencias locales
+
+Los archivos descargados durante la prueba se guardaron en:
+
+```text
+evidencias/firehose/
+```
+
+Estos archivos sirven como evidencia local de la entrega y permiten inspeccionar el contenido descomprimido.
+
+### 8. Observaciones pendientes
+
+En la primera inspección, los objetos JSON aparecieron concatenados sin saltos de línea. Para facilitar el procesamiento posterior con herramientas como Python, Spark o Athena, conviene asegurar que cada registro enviado termine con `\n` y volver a validar el formato de los archivos nuevos.
+
+La prueba confirmó la existencia y lectura de los archivos, pero no se debe interpretar la presencia de dos archivos como una verificación independiente de que los 100 registros estén todos presentes y sin duplicados.
+
+### 9. Estado del checkpoint
+
+- [x] Infraestructura desplegada mediante Terraform.
+- [x] Kinesis activo con dos shards y cifrado KMS.
+- [x] Firehose activo y configurado para entregar a S3.
+- [x] Productor Python ejecutado con 100 registros.
+- [x] Archivos GZIP encontrados y descargados desde S3.
+- [ ] Validar el formato final con un registro JSON por línea.
+- [ ] Contar y verificar los 100 registros entregados.
+- [ ] Incorporar las evidencias definitivas y confirmar los cambios en Git.
+'@ | Add-Content -Path .\README.md -Encoding UTF8
+
+### 10. Segunda prueba: validación del formato JSON
+
+Se corrigió `scripts/kinesis_producer.py` para agregar un salto de línea (`\n`) al final de cada evento enviado a Kinesis. Esto permite procesar la salida como JSON Lines (NDJSON).
+
+Se ejecutó nuevamente el productor y se descargaron los dos archivos generados en la segunda prueba, en la carpeta `evidencias/firehose_prueba2/`.
+
+La validación se realizó mediante `scripts/validar_firehose.py`, que descomprime los archivos, analiza cada línea y comprueba los identificadores de los eventos.
+
+**Resultado observado:**
+
+| Métrica | Resultado |
+|---|---:|
+| Archivos GZIP de la segunda prueba | 2 |
+| Registros JSON válidos | 100 |
+| Líneas inválidas | 0 |
+| IDs distintos | 100 |
+| IDs del 1 al 100 completos | Sí |
+
+La segunda prueba confirmó la entrega de los 100 registros y la validez del formato JSON por línea.
+
+Estado actualizado del checkpoint:
+
+- [x] Infraestructura desplegada mediante Terraform.
+- [x] Kinesis activo con dos shards y cifrado KMS.
+- [x] Firehose activo y configurado para entregar a S3.
+- [x] Productor Python ejecutado con 100 registros.
+- [x] Archivos GZIP descargados y descomprimidos.
+- [x] Formato JSON por línea validado en la segunda prueba.
+- [x] 100 registros y sus IDs verificados.
+- [ ] Revisar los cambios de Git y preparar el commit.

@@ -91,3 +91,21 @@ module "identity" {
 
   service_linked_role_services = var.service_linked_role_services
 }
+
+# Conecto el módulo con el entorno dev
+# agrego una llamada al módulo
+
+module "kinesis" {
+  source = "../../modules/kinesis"
+
+  project_name   = "data-platform"
+  environment    = "dev"
+  s3_bucket_name = "data-platform-dev-659500704179-bucket"
+
+  shard_count = 2
+
+  tags = {
+    Environment = "dev"
+    Project     = "data-platform"
+  }
+}
