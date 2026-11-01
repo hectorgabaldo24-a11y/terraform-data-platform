@@ -1,6 +1,6 @@
 # Evidencia de ejecución — Managed Service for Apache Flink (Pre-entrega 4)
 
-Registro de la corrida de `data-platform-dev-flink` del 2026-11-01 (cuenta `659500704179`, `us-east-1`). Los pasos para reproducirla están en el [README](README.md#7-despliegue). Las capturas se guardan en [docs/evidencias-flink/](docs/evidencias-flink/).
+Registro de la corrida de `data-platform-dev-flink` del 2026-11-01 (cuenta `659500704179`, `us-east-1`). Los pasos para reproducirla están en el [README](README.md#7-despliegue). Desde la Pre-entrega 5 la salida del job es la tabla Iceberg documentada en [EVIDENCIA_LAKEHOUSE.md](EVIDENCIA_LAKEHOUSE.md); el sink JSON en `flink/resultados/` que aparece acá corresponde a esta corrida. Las capturas se guardan en [docs/evidencias-flink/](docs/evidencias-flink/).
 
 ## 1. Despliegue
 

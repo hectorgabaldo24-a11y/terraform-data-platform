@@ -23,7 +23,7 @@ tflint --version
 aws sts get-caller-identity       # debe mostrar la cuenta donde se quiere desplegar
 ```
 
-Si la cuenta **no** es `659500704179`, antes de seguir cambiar el nombre del bucket del state (único global) en [bootstrap/terraform.tfvars](bootstrap/terraform.tfvars) y en el bloque `backend "s3"` de `environments/dev/backend.tf` y `environments/prod/backend.tf` (ver [README](README.md#1-bootstrap-del-backend-una-sola-vez)).
+Si la cuenta **no** es `659500704179`, antes de seguir cambiar el nombre del bucket del state (único global) en [infra/bootstrap/terraform.tfvars](infra/bootstrap/terraform.tfvars) y en el bloque `backend "s3"` de `infra/environments/dev/backend.tf` y `infra/environments/prod/backend.tf` (ver [README](README.md#1-bootstrap-del-backend-una-sola-vez)).
 
 Chequeo previo del Service-Linked Role de Lake Formation (AWS permite uno por cuenta):
 
@@ -40,7 +40,7 @@ Desde la raíz del repo:
 ```bash
 terraform fmt -recursive -check          # sin salida y exit 0 = todo formateado
 
-for d in bootstrap environments/dev environments/prod; do
+for d in infra/bootstrap infra/environments/dev infra/environments/prod; do
   (cd "$d" && terraform init -backend=false -input=false >/dev/null && terraform validate)
 done                                     # 3 × "Success! The configuration is valid."
 ```
@@ -57,7 +57,7 @@ tflint --recursive                       # sin errores ni advertencias
 ## 3. Plan (lee el state remoto, no modifica nada)
 
 ```bash
-cd environments/dev
+cd infra/environments/dev
 terraform init
 terraform plan -detailed-exitcode
 ```
@@ -77,7 +77,7 @@ cd ../prod && terraform init && terraform plan
 Solo si el backend (bootstrap) no existe todavía; es de una sola vez y usa state local:
 
 ```bash
-cd bootstrap
+cd infra/bootstrap
 terraform init
 terraform apply
 terraform output                         # state_bucket y lock_table
@@ -128,11 +128,11 @@ Prueba de que el bloqueo del state funciona: ejecutar `terraform plan` en una te
 ## 6. Limpieza
 
 ```bash
-cd environments/dev  && terraform destroy
+cd infra/environments/dev  && terraform destroy
 cd ../prod           && terraform destroy     # solo si se aplicó prod
 ```
 
-El backend (`bootstrap/`) tiene `prevent_destroy` a propósito: se elimina a mano (vaciar el bucket versionado y quitar la protección) cuando ya no hace falta ningún state.
+El backend (`infra/bootstrap/`) tiene `prevent_destroy` a propósito: se elimina a mano (vaciar el bucket versionado y quitar la protección) cuando ya no hace falta ningún state.
 
 ## Si algo falla
 

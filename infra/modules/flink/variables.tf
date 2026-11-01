@@ -45,14 +45,14 @@ variable "artifact_bucket" {
 }
 
 variable "artifact_local_path" {
-  description = "Ruta local del ZIP generado por flink-app/build.ps1"
+  description = "Ruta local del ZIP generado por app/build.ps1"
   type        = string
 }
 
-variable "output_prefix" {
-  description = "Prefijo S3 (sin barras al inicio ni al final) donde la aplicación escribe los agregados"
-  type        = string
-  default     = "flink/resultados"
+variable "application_properties" {
+  description = "Propiedades adicionales para el grupo FlinkApplicationProperties (p. ej. destino Iceberg)"
+  type        = map(string)
+  default     = {}
 }
 
 variable "parallelism" {
@@ -94,6 +94,12 @@ variable "watermark_delay_seconds" {
   description = "Retraso tolerado por el watermark (eventos fuera de orden)"
   type        = number
   default     = 30
+}
+
+variable "allow_non_restored_state" {
+  description = "Permite arrancar aunque el snapshot tenga estado de operadores que ya no existen (p. ej. tras cambiar el sink)"
+  type        = bool
+  default     = false
 }
 
 variable "start_application" {

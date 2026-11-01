@@ -59,3 +59,9 @@ variable "flink_start_application" {
   type        = bool
   default     = false
 }
+
+variable "flink_allow_non_restored_state" {
+  description = "true descarta el estado de operadores que ya no existen al restaurar un snapshot (necesario al cambiar la topología del job)"
+  type        = bool
+  default     = false
+}

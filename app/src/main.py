@@ -1,12 +1,15 @@
 """
-Procesamiento en tiempo real de eventos de clientes (Pre-entrega 4).
+Procesamiento en tiempo real de eventos de clientes (Pre-entregas 4 y 5).
 
 Flujo:
   Kinesis (data-platform-dev-events)
     -> tabla `eventos` con event time + watermark
     -> ventana TUMBLE de 1 minuto por cliente (conteos, sumas, promedios)
     -> KeyedProcessFunction con ValueState por cliente (acumulados y deteccion de picos)
-    -> S3 (JSON particionado por fecha)
+    -> tabla Apache Iceberg registrada en AWS Glue Data Catalog (lakehouse_db)
+
+El sink de Iceberg escribe archivos Parquet en S3 y solo confirma el commit
+(nuevo metadata.json + snapshot en Glue) cuando Flink completa un checkpoint.
 
 En Managed Service for Apache Flink la configuracion se lee de las
 "runtime properties" (grupo FlinkApplicationProperties) que define Terraform.
@@ -65,7 +68,12 @@ def prop(nombre, default):
 AWS_REGION = prop("aws.region", "us-east-1")
 KINESIS_STREAM = prop("input.stream.name", "data-platform-dev-events")
 STREAM_INITPOS = prop("input.stream.initpos", "LATEST")
-OUTPUT_PATH = prop("output.s3.path", (PROJECT_DIR / "output").as_uri())
+
+# Lakehouse: catalogo Glue + tabla Iceberg creada por Terraform (modulo lakehouse).
+ICEBERG_CATALOG = "glue_catalog"
+ICEBERG_WAREHOUSE = prop("iceberg.warehouse", "")
+ICEBERG_DATABASE = prop("iceberg.database", "lakehouse_db")
+ICEBERG_TABLE = prop("iceberg.table", "ventanas_clientes")
 
 # Tolerancia al desorden: un evento puede llegar hasta N segundos tarde
 # respecto del evento mas nuevo visto y aun asi entrar en su ventana.
@@ -107,7 +115,6 @@ OUTPUT_TYPE = Types.ROW_NAMED(
         "importe_acumulado",
         "variacion_pct",
         "alerta",
-        "dt",
     ],
     [
         Types.STRING(),
@@ -120,7 +127,6 @@ OUTPUT_TYPE = Types.ROW_NAMED(
         Types.LONG(),
         Types.DOUBLE(),
         Types.DOUBLE(),
-        Types.STRING(),
         Types.STRING(),
     ],
 )
@@ -193,7 +199,6 @@ class DeteccionPatrones(KeyedProcessFunction):
             round(acumulado, 2),
             variacion,
             alerta,
-            value[COL_WINDOW_START][:10],
         )
 
 
@@ -216,12 +221,17 @@ def main():
 
     config.set_string("table.exec.source.idle-timeout", SOURCE_IDLE_TIMEOUT)
 
+    if not ICEBERG_WAREHOUSE:
+        raise ValueError("Falta la propiedad iceberg.warehouse (ICEBERG_WAREHOUSE en local)")
+
+    destino = f"{ICEBERG_CATALOG}.{ICEBERG_DATABASE}.{ICEBERG_TABLE}"
     logger.info(
-        "Configuracion: stream=%s region=%s initpos=%s salida=%s watermark=%ss",
+        "Configuracion: stream=%s region=%s initpos=%s destino=%s warehouse=%s watermark=%ss",
         KINESIS_STREAM,
         AWS_REGION,
         STREAM_INITPOS,
-        OUTPUT_PATH,
+        destino,
+        ICEBERG_WAREHOUSE,
         WATERMARK_DELAY_SECONDS,
     )
 
@@ -258,31 +268,24 @@ def main():
     """)
 
     # --------------------------------------------------
-    # DESTINO: S3
+    # DESTINO: CATALOGO GLUE + TABLA ICEBERG
     # --------------------------------------------------
+    # La base lakehouse_db y la tabla (esquema + particionado day(window_start))
+    # las crea Terraform; aca solo se registra el catalogo y se apunta a la tabla.
+    #
+    # Concurrencia: GlueCatalog usa el optimistic locking de Glue por defecto
+    # (UpdateTable condicionado al VersionId de la tabla), sin lock externo.
+    # Ademas el sink de Iceberg confirma desde un unico committer (paralelismo 1),
+    # asi que nunca hay dos commits simultaneos desde este job.
 
     table_env.execute_sql(f"""
-        CREATE TABLE resultados (
-            window_start STRING,
-            window_end STRING,
-            cliente_id STRING,
-            total_operaciones BIGINT,
-            cantidad_compras BIGINT,
-            importe_total_compras DOUBLE,
-            importe_promedio_compras DOUBLE,
-            ventanas_procesadas BIGINT,
-            importe_acumulado DOUBLE,
-            variacion_pct DOUBLE,
-            alerta STRING,
-            dt STRING
-        )
-        PARTITIONED BY (dt)
-        WITH (
-            'connector' = 'filesystem',
-            'path' = '{OUTPUT_PATH}',
-            'format' = 'json',
-            'sink.rolling-policy.rollover-interval' = '1 min',
-            'sink.rolling-policy.check-interval' = '30 s'
+        CREATE CATALOG {ICEBERG_CATALOG} WITH (
+            'type' = 'iceberg',
+            'catalog-impl' = 'org.apache.iceberg.aws.glue.GlueCatalog',
+            'io-impl' = 'org.apache.iceberg.aws.s3.S3FileIO',
+            'warehouse' = '{ICEBERG_WAREHOUSE}',
+            'client.region' = '{AWS_REGION}',
+            'glue.skip-archive' = 'true'
         )
     """)
 
@@ -320,9 +323,28 @@ def main():
         .name("deteccion-patrones-por-cliente")
     )
 
-    logger.info("Iniciando procesamiento de eventos Kinesis...")
+    table_env.create_temporary_view("ventanas_enriquecidas", table_env.from_data_stream(enriquecido))
 
-    result = table_env.from_data_stream(enriquecido).execute_insert("resultados")
+    logger.info("Iniciando procesamiento de eventos Kinesis hacia %s...", destino)
+
+    # Las ventanas viajan como texto por el DataStream de Python; aca se convierten
+    # a TIMESTAMP(6), el tipo `timestamp` de Iceberg sobre el que se particiona.
+    result = table_env.execute_sql(f"""
+        INSERT INTO {destino}
+        SELECT
+            CAST(window_start AS TIMESTAMP(6)),
+            CAST(window_end AS TIMESTAMP(6)),
+            cliente_id,
+            total_operaciones,
+            cantidad_compras,
+            importe_total_compras,
+            importe_promedio_compras,
+            ventanas_procesadas,
+            importe_acumulado,
+            variacion_pct,
+            alerta
+        FROM ventanas_enriquecidas
+    """)
 
     if IS_LOCAL:
         result.wait()

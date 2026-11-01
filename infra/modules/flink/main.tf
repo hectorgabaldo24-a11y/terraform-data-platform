@@ -26,7 +26,7 @@ resource "aws_cloudwatch_log_stream" "flink" {
 }
 
 # ---------------------------------------------------------------------------
-# Artefacto: ZIP con main.py + lib/pyflink-dependencies.jar (flink-app/build.ps1)
+# Artefacto: ZIP con main.py + lib/pyflink-dependencies.jar (app/build.ps1)
 # ---------------------------------------------------------------------------
 resource "aws_s3_object" "flink_application" {
   bucket = var.artifact_bucket
@@ -45,7 +45,8 @@ resource "aws_s3_object" "flink_application" {
 # Aplicación Managed Service for Apache Flink
 # ---------------------------------------------------------------------------
 resource "aws_kinesisanalyticsv2_application" "flink" {
-  name                   = local.application_name
+  name = local.application_name
+  # Ojo: cambiar description fuerza el reemplazo de la aplicación (se pierden los snapshots).
   description            = "Agregaciones por ventana y detección de picos por cliente (PyFlink)"
   runtime_environment    = "FLINK-1_19"
   service_execution_role = var.execution_role_arn
@@ -76,7 +77,7 @@ resource "aws_kinesisanalyticsv2_application" "flink" {
       }
 
       flink_run_configuration {
-        allow_non_restored_state = false
+        allow_non_restored_state = var.allow_non_restored_state
       }
     }
 
@@ -93,20 +94,20 @@ resource "aws_kinesisanalyticsv2_application" "flink" {
       # Configuración de negocio que lee main.py.
       property_group {
         property_group_id = "FlinkApplicationProperties"
-        property_map = {
+        property_map = merge({
           "aws.region"              = var.aws_region
           "input.stream.name"       = var.stream_name
           "input.stream.initpos"    = var.stream_initial_position
-          "output.s3.path"          = "s3://${var.artifact_bucket}/${var.output_prefix}/"
           "watermark.delay.seconds" = tostring(var.watermark_delay_seconds)
           "source.idle.timeout"     = "30 s"
-        }
+        }, var.application_properties)
       }
     }
 
     flink_application_configuration {
       # Checkpoints periódicos en el almacenamiento durable (S3) administrado
       # por el servicio: ante una falla el job se reanuda desde el último.
+      # El sink de Iceberg hace el commit de cada snapshot al completar un checkpoint.
       checkpoint_configuration {
         configuration_type            = "CUSTOM"
         checkpointing_enabled         = true

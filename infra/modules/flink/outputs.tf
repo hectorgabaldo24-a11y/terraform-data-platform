@@ -23,11 +23,6 @@ output "application_code_s3_key" {
   value       = aws_s3_object.flink_application.key
 }
 
-output "output_s3_path" {
-  description = "Ruta S3 donde la aplicación escribe los agregados"
-  value       = "s3://${var.artifact_bucket}/${var.output_prefix}/"
-}
-
 output "log_group_name" {
   description = "Grupo de logs de CloudWatch de la aplicación"
   value       = aws_cloudwatch_log_group.flink.name

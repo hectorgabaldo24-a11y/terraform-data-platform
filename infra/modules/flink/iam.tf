@@ -2,12 +2,11 @@
 # módulo identity (que ya tiene la lectura de Kinesis):
 #
 # s3:GetObject / ListBucket          -> descargar el ZIP (flink/app/*)
-# s3:PutObject y multipart upload    -> escribir resultados (flink/resultados/*)
 # logs:Describe* / PutLogEvents      -> logs de la aplicación en CloudWatch
 # ec2:*NetworkInterface* (opcional)  -> solo si la aplicación corre dentro de la VPC
 #
-# La política no concede permisos para crear buckets, borrar fuera del prefijo
-# de resultados ni administrar otros servicios.
+# La escritura en el lakehouse (Glue + S3 del warehouse) la concede el módulo
+# lakehouse. Esta política no permite crear buckets ni administrar otros servicios.
 
 data "aws_iam_policy_document" "flink_access" {
 
@@ -19,9 +18,9 @@ data "aws_iam_policy_document" "flink_access" {
     resources = ["arn:aws:s3:::${var.artifact_bucket}/flink/app/*"]
   }
 
-  # Listar solo los prefijos de Flink.
+  # Listar solo el prefijo del artefacto.
   statement {
-    sid       = "ListFlinkPrefixes"
+    sid       = "ListFlinkArtifactPrefix"
     effect    = "Allow"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::${var.artifact_bucket}"]
@@ -29,22 +28,8 @@ data "aws_iam_policy_document" "flink_access" {
     condition {
       test     = "StringLike"
       variable = "s3:prefix"
-      values   = ["flink/app/*", var.output_prefix, "${var.output_prefix}/*"]
+      values   = ["flink/app/*"]
     }
-  }
-
-  # El sink de archivos escribe con multipart upload y confirma en cada checkpoint.
-  statement {
-    sid    = "WriteFlinkResults"
-    effect = "Allow"
-    actions = [
-      "s3:PutObject",
-      "s3:GetObject",
-      "s3:DeleteObject",
-      "s3:AbortMultipartUpload",
-      "s3:ListMultipartUploadParts",
-    ]
-    resources = ["arn:aws:s3:::${var.artifact_bucket}/${var.output_prefix}/*"]
   }
 
   # Consultar los grupos de logs (la API no admite restringir por recurso).

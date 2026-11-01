@@ -123,7 +123,7 @@ module "flink" {
   execution_role_name = module.identity.processing_role_name
 
   artifact_bucket     = aws_s3_bucket.data_platform.id
-  artifact_local_path = "${path.root}/../../flink-app/flink-app.zip"
+  artifact_local_path = "${path.root}/../../../app/flink-app.zip"
 
   # Paralelismo 2 = un slot por shard del stream -> 2 KPUs de procesamiento.
   parallelism         = var.flink_parallelism
@@ -133,15 +133,45 @@ module "flink" {
   watermark_delay_seconds = var.flink_watermark_delay_seconds
   start_application       = var.flink_start_application
 
+  # El sink cambió de archivos JSON (Pre-entrega 4) a Iceberg: el snapshot previo
+  # tiene estado del operador viejo, que se descarta en lugar de bloquear el arranque.
+  allow_non_restored_state = var.flink_allow_non_restored_state
+
+  # Destino del job (Pre-entrega 5): tabla Iceberg del catálogo Glue.
+  application_properties = {
+    "iceberg.warehouse" = module.lakehouse.warehouse_path
+    "iceberg.database"  = module.lakehouse.database_name
+    "iceberg.table"     = module.lakehouse.table_name
+  }
+
   # Fuera de la VPC: la VPC del módulo network no tiene NAT ni endpoints de
-  # Kinesis/CloudWatch Logs, así que el job no podría alcanzar esos servicios.
+  # Kinesis/CloudWatch Logs/Glue, así que el job no podría alcanzar esos servicios.
   private_subnet_ids = []
   security_group_ids = []
 
   tags = local.tags
 
-  # La política de lectura de Kinesis del rol vive en identity: debe existir
-  # antes de que el job arranque.
-  depends_on = [module.identity]
+  # Las políticas del rol (lectura de Kinesis en identity, Glue/S3 en lakehouse)
+  # y la tabla Iceberg deben existir antes de que el job arranque.
+  depends_on = [module.identity, module.lakehouse]
+}
+
+# Lakehouse (Pre-entrega 5): Glue Data Catalog + tabla Apache Iceberg en S3.
+module "lakehouse" {
+  source = "../../modules/lakehouse"
+
+  name_prefix      = local.name_prefix
+  bucket_name      = aws_s3_bucket.data_platform.id
+  warehouse_prefix = "lakehouse"
+  database_name    = "lakehouse_db"
+  table_name       = "ventanas_clientes"
+
+  # Mismo rol de ejecución de Managed Flink: es el que escribe en la tabla.
+  writer_role_name = module.identity.processing_role_name
+
+  tags = local.tags
+
+  # Iceberg necesita versionado en el bucket (recuperación de archivos borrados por error).
+  depends_on = [aws_s3_bucket_versioning.data_platform]
 }
 

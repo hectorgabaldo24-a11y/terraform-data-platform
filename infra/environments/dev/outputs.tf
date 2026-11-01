@@ -43,9 +43,24 @@ output "flink_application_status" {
   value       = module.flink.application_status
 }
 
-output "flink_output_s3_path" {
-  description = "Ruta S3 de los agregados que produce Flink"
-  value       = module.flink.output_s3_path
+output "lakehouse_database" {
+  description = "Base de datos del Glue Data Catalog"
+  value       = module.lakehouse.database_name
+}
+
+output "lakehouse_table" {
+  description = "Tabla Iceberg escrita por Flink"
+  value       = module.lakehouse.table_name
+}
+
+output "lakehouse_table_location" {
+  description = "Ubicación S3 de la tabla Iceberg (data/ y metadata/)"
+  value       = module.lakehouse.table_location
+}
+
+output "athena_workgroup" {
+  description = "Workgroup de Athena para consultar el lakehouse"
+  value       = module.lakehouse.athena_workgroup
 }
 
 output "flink_log_group_name" {

@@ -1,12 +1,12 @@
 # Empaqueta la aplicacion PyFlink para Managed Service for Apache Flink.
 #
-# Resultado: flink-app/flink-app.zip con la estructura que espera el servicio
+# Resultado: app/flink-app.zip con la estructura que espera el servicio
 #   main.py
-#   lib/pyflink-dependencies.jar   (conector Kinesis + dependencias, generado con Maven)
+#   lib/pyflink-dependencies.jar   (conectores Kinesis + Iceberg/Glue + Hadoop, generado con Maven)
 #
-# Uso (desde cualquier carpeta):
-#   .\flink-app\build.ps1              # compila el JAR y arma el ZIP
-#   .\flink-app\build.ps1 -SkipMaven   # reutiliza target/pyflink-dependencies.jar
+# Uso (desde la raiz del repo o cualquier carpeta):
+#   .\app\build.ps1              # compila el JAR y arma el ZIP
+#   .\app\build.ps1 -SkipMaven   # reutiliza target/pyflink-dependencies.jar
 
 param(
     [switch]$SkipMaven
@@ -24,8 +24,8 @@ if (-not $SkipMaven) {
         mvn -q clean package
     }
     elseif (Get-Command docker -ErrorAction SilentlyContinue) {
-        # Sin Maven local: se compila dentro de un contenedor con JDK 11.
-        docker run --rm -v "${PSScriptRoot}:/app" -w /app maven:3.9.9-eclipse-temurin-11 mvn -q clean package
+        # Sin Maven local: se compila dentro de un contenedor con JDK 11 (volumen data-platform-m2 = cache de dependencias).
+        docker run --rm -v "${PSScriptRoot}:/app" -v data-platform-m2:/root/.m2 -w /app maven:3.9.9-eclipse-temurin-11 mvn -B -q clean package
     }
     else {
         throw "Se necesita Maven o Docker para generar el JAR de dependencias."
