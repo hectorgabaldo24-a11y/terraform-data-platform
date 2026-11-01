@@ -1,6 +1,6 @@
 
 locals {
-  stream_name = "${var.project_name}-${var.environment}-events"
+  stream_name   = "${var.project_name}-${var.environment}-events"
   firehose_name = "${var.project_name}-${var.environment}-bronze"
 
   common_tags = merge(var.tags, {
@@ -138,7 +138,7 @@ resource "aws_kinesis_firehose_delivery_stream" "bronze" {
     role_arn   = aws_iam_role.firehose.arn
     bucket_arn = "arn:aws:s3:::${var.s3_bucket_name}"
 
-    prefix = "ingesta/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+    prefix              = "ingesta/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
     error_output_prefix = "errores/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
 
     buffering_size     = 5

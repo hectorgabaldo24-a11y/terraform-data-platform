@@ -1,6 +1,12 @@
-# Terraform Data Platform — Infraestructura base (Pre-entrega 1)
+# Terraform Data Platform
 
-Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada para datos e IAM core. Prepara el terreno para los módulos de streaming (Kinesis / Flink).
+Plataforma de datos en AWS construida de forma incremental con Terraform:
+
+| Pre-entrega | Capa | Sección |
+|-------------|------|---------|
+| 1 | Infraestructura base: backend remoto, red privada, IAM core | [Despliegue](#despliegue) |
+| 2 | Ingesta: Kinesis Data Streams + Firehose -> S3 (bronze) | [Checkpoint 2](#checkpoint-2--ingesta-en-tiempo-real-con-amazon-kinesis) |
+| 4 | Procesamiento en tiempo real: Managed Service for Apache Flink | [Checkpoint 4](#checkpoint-4--procesamiento-en-tiempo-real-con-managed-service-for-apache-flink) |
 
 > **Dónde ejecutar Terraform:** la raíz del repo no contiene configuración. Hay dos puntos de entrada: `bootstrap/` (backend, una vez) y `environments/dev/` (la plataforma). Ver [Despliegue](#despliegue).
 
@@ -17,6 +23,8 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 | Registro de una corrida real de esa verificación | [VERIFICACION_OUTPUT.md](VERIFICACION_OUTPUT.md) |
 | Evidencia por criterio de la rúbrica (HCL, seguridad, modularización, documentación) | [EVIDENCIA.md](EVIDENCIA.md) |
 | Reuso del módulo de red en otro entorno | [environments/prod](environments/prod) · [PLAN_OUTPUT_PROD.md](PLAN_OUTPUT_PROD.md) |
+| Ingesta Kinesis + Firehose (Pre-entrega 2) | [modules/kinesis](modules/kinesis) · [scripts/](scripts) |
+| Aplicación Flink y su módulo Terraform (Pre-entrega 4) | [flink-app/](flink-app) · [modules/flink](modules/flink) · [EVIDENCIA_FLINK.md](EVIDENCIA_FLINK.md) |
 
 ## Estructura
 
@@ -25,7 +33,11 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 ├── bootstrap/            # Backend remoto (S3 + DynamoDB): main, variables, outputs, providers, tfvars. Se aplica una vez, con estado local
 ├── modules/
 │   ├── network/          # VPC, subredes privadas, route tables y S3 Gateway Endpoint
-│   └── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only
+│   ├── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only
+│   ├── kinesis/          # Kinesis Data Stream (2 shards, KMS), Firehose a S3 y alarmas (Pre-entrega 2)
+│   └── flink/            # Managed Flink: aplicación, artefacto en S3, logs e IAM (Pre-entrega 4)
+├── flink-app/            # Código PyFlink (src/main.py), pom.xml del conector y build.ps1 (Pre-entrega 4)
+├── scripts/              # Productor de eventos y validación de Firehose
 ├── environments/
 │   ├── dev/              # backend.tf, providers.tf, variables.tf, main.tf, outputs.tf, terraform.tfvars
 │   └── prod/             # Ejemplo de reuso de los módulos: solo cambian backend key y tfvars
@@ -34,6 +46,7 @@ Andamiaje base de una plataforma de datos en AWS: backend remoto, red privada pa
 ├── APPLY_OUTPUT.md       # Apply de dev y verificación contra AWS
 ├── PLAN_OUTPUT_PROD.md   # Plan de environments/prod (reuso de módulos)
 ├── EVIDENCIA.md          # Evidencia por criterio de la rúbrica
+├── EVIDENCIA_FLINK.md    # Evidencia de ejecución de la aplicación Flink
 └── README.md
 ```
 
@@ -163,7 +176,6 @@ Para destruir todo lo del entorno: `terraform destroy` en `environments/dev`. El
 * El state está cifrado (SSE), versionado y con locking; `.gitignore` excluye `.terraform/`, `*.tfstate*` y planes.
 
 
-@'
 
 ---
 
@@ -295,7 +307,6 @@ La prueba confirmó la existencia y lectura de los archivos, pero no se debe int
 - [ ] Validar el formato final con un registro JSON por línea.
 - [ ] Contar y verificar los 100 registros entregados.
 - [ ] Incorporar las evidencias definitivas y confirmar los cambios en Git.
-'@ | Add-Content -Path .\README.md -Encoding UTF8
 
 ### 10. Segunda prueba: validación del formato JSON
 
@@ -330,11 +341,11 @@ Estado actualizado del checkpoint:
 
 ### Evidencia de entrega en S3
 
-Comando ejecutado:
-
 ```powershell
 aws s3 ls s3://data-platform-dev-659500704179-bucket/ingesta/ --recursive
-PS C:\Users\HectorGabaldo\Documents\Cursos\Terraform\terraform-data-platform> aws s3 ls s3://data-platform-dev-659500704179-bucket/ingesta/ --recursive
+```
+
+```text
 2026-10-15 22:59:51        532 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-01-58-50-9832922e-1b28-400c-8cc5-5e7e83c83f48.gz
 2026-10-15 22:59:51        722 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-01-58-50-a5fec46c-02dc-445d-a872-ecd9dc711514.gz
 2026-10-15 23:07:57        724 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-06-54-571abf9b-4adf-4969-884a-183a7ee9a766.gz
@@ -342,4 +353,170 @@ PS C:\Users\HectorGabaldo\Documents\Cursos\Terraform\terraform-data-platform> aw
 2026-10-15 23:27:18        542 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-26-12-a1ba6215-3b03-4c05-9e4e-23536ced3c86.gz
 2026-10-15 23:27:13        731 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-26-12-dd973b1a-2dc0-44d4-a2ac-e387025d1085.gz
 2026-10-15 23:38:06         89 ingesta/year=2026/month=10/day=16/data-platform-dev-bronze-1-2026-10-16-02-37-00-a5a54295-4c04-4bc0-a86e-172b444ff124.gz
-PS C:\Users\HectorGabaldo\Documents\Cursos\Terraform\terraform-data-platform> 
+```
+
+---
+
+## Checkpoint 4 — Procesamiento en tiempo real con Managed Service for Apache Flink
+
+### 1. Objetivo
+
+Agregar una capa de procesamiento *stateful* sobre la ingesta del Checkpoint 2: una aplicación de **Amazon Managed Service for Apache Flink** (PyFlink, Flink 1.19) que consume el mismo Kinesis Data Stream, agrega eventos en ventanas de tiempo de evento y mantiene estado por cliente, con checkpoints para recuperarse ante fallas.
+
+### 2. Arquitectura
+
+```text
+scripts/kinesis_producer.py
+        │  put_records (PartitionKey = cliente_id)
+        ▼
+Kinesis Data Stream  data-platform-dev-events  (2 shards, KMS)
+        │                                   │
+        │ (Checkpoint 2)                    │ (Checkpoint 4)
+        ▼                                   ▼
+Firehose -> S3 ingesta/ (bronze)     Managed Flink  data-platform-dev-flink
+                                       ├─ Source Kinesis + watermark (event time)
+                                       ├─ TUMBLE 1 min GROUP BY cliente_id
+                                       ├─ KeyedProcessFunction (ValueState por cliente)
+                                       ├─ Sink S3  flink/resultados/dt=YYYY-MM-DD/
+                                       └─ Logs CloudWatch /aws/kinesis-analytics/data-platform-dev-flink
+```
+
+Firehose y Flink leen el stream en paralelo como consumidores independientes; cada uno lleva su propia posición de lectura.
+
+### 3. Lógica de negocio
+
+Los eventos representan operaciones de clientes (`compra` o `consulta`):
+
+```json
+{"event_id": 42, "event_type": "compra", "cliente_id": "cliente-002", "importe": 173.5, "timestamp": "2026-11-01T14:05:12.345678+00:00"}
+```
+
+El código está en [flink-app/src/main.py](flink-app/src/main.py) y calcula, por cliente y por minuto:
+
+| Paso | Qué hace | Detalle |
+|------|----------|---------|
+| Deserialización | Tabla `eventos` sobre el conector `kinesis`, formato JSON | `json.ignore-parse-errors = true`: un registro malformado no detiene el job |
+| Event time | `event_time` se deriva del campo `timestamp` del evento (no de la hora de llegada) | Se lee como texto y se convierte a `TIMESTAMP(3)`; si falta o es inválido cae en 1970 y se descarta como tardío |
+| Watermark | `WATERMARK FOR event_time AS event_time - INTERVAL '30' SECOND` | Tolera hasta 30 s de desorden (configurable con `flink_watermark_delay_seconds`) |
+| Ventana | `TUMBLE(..., INTERVAL '1' MINUTE)` agrupada por `cliente_id` | Equivale a `TumblingEventTimeWindows.of(1 min)` sobre un stream con `key_by(cliente_id)` |
+| Agregaciones | `total_operaciones`, `cantidad_compras`, `importe_total_compras`, `importe_promedio_compras` | Flink mantiene el estado de cada ventana abierta hasta que el watermark la cierra |
+| Estado por clave (KeyedState) | `DeteccionPatrones` (`KeyedProcessFunction`) con 3 `ValueState` por cliente | `ventanas_procesadas`, `importe_acumulado` (total histórico del cliente) e `importe_ventana_anterior` |
+| Detección de patrones | `variacion_pct` contra la ventana anterior y `alerta = PICO_COMPRAS` | Se dispara si el importe de la ventana es ≥ 2 veces el anterior con al menos 2 compras |
+| Salida | JSON en `s3://<bucket>/flink/resultados/dt=YYYY-MM-DD/` y una línea `VENTANA ...` por resultado en CloudWatch | Los archivos se confirman en cada checkpoint (exactly-once hacia S3) |
+
+**Por qué 30 segundos de watermark:** el productor y la red introducen desorden (dos shards leídos en paralelo, reintentos de `put_records`, y el productor puede simular retrasos con `--max-retraso`). Con 5 s, un evento retrasado 10 s se perdería como tardío; con 30 s se aceptan esos casos y la ventana se emite como mucho 30 s después de cerrar, una latencia razonable para métricas por minuto. Además, `table.exec.source.idle-timeout = 30 s` evita que un shard sin tráfico frene el watermark de todo el job (sin esto las ventanas no se cerrarían nunca).
+
+### 4. Paralelismo y KPUs
+
+| Parámetro (Terraform) | Valor | Motivo |
+|-----------------------|-------|--------|
+| `parallelism` | 2 | El stream tiene 2 shards y el consumidor de Kinesis reparte shards entre subtareas: más de 2 subtareas de lectura quedarían ociosas |
+| `parallelism_per_kpu` | 1 | Una tarea por KPU (1 vCPU, 4 GB): el worker de Python necesita memoria propia además de la JVM |
+| KPUs de procesamiento | 2 | `ceil(parallelism / parallelism_per_kpu)` |
+| KPU de orquestación | 1 | La agrega el servicio a toda aplicación; total facturado: 3 KPUs mientras está en `RUNNING` |
+| `auto_scaling_enabled` | false | Costo predecible en dev; el volumen de prueba no lo justifica |
+
+Para escalar: aumentar los shards en `modules/kinesis` y `flink_parallelism` en `environments/dev/terraform.tfvars` en la misma proporción. La aplicación se crea con `flink_start_application = false` para no generar costo hasta que se quiera probar (ver despliegue).
+
+### 5. Tolerancia a fallos
+
+* **Checkpoints** (`checkpoint_configuration`): `checkpointing_enabled = true`, cada 60 s, con 5 s de pausa mínima. Managed Flink guarda los checkpoints en almacenamiento durable respaldado por S3 que administra el propio servicio: el bucket no se elige, así implementa el servicio la "ruta de S3" de checkpoints. Si un TaskManager falla, el job se reinicia desde el último checkpoint con el estado de las ventanas y el `ValueState` de cada cliente intactos, y retoma la lectura de Kinesis desde las posiciones guardadas.
+* **Snapshots** (`application_snapshot_configuration`): habilitados. Al detener o actualizar la aplicación se toma un snapshot, y `RESTORE_FROM_LATEST_SNAPSHOT` lo restaura al iniciar, así el acumulado por cliente sobrevive a un redeploy.
+* **Sink a S3**: el conector `filesystem` sólo publica los archivos cuando el checkpoint se completa, por lo que no quedan resultados duplicados ni parciales tras un reinicio.
+
+### 6. Infraestructura (Terraform)
+
+El módulo nuevo [modules/flink](modules/flink) se invoca desde [environments/dev/main.tf](environments/dev/main.tf) junto a `network`, `identity` y `kinesis`, y recibe sus outputs (nombre del stream, rol de procesamiento, bucket del data lake).
+
+| Archivo | Contenido |
+|---------|-----------|
+| [modules/flink/main.tf](modules/flink/main.tf) | Log group/stream de CloudWatch, `aws_s3_object` con el ZIP, `aws_kinesisanalyticsv2_application` (código en S3, propiedades, checkpoints, monitoreo, paralelismo, snapshots, VPC opcional) |
+| [modules/flink/iam.tf](modules/flink/iam.tf) | Política agregada al rol de procesamiento: leer el ZIP, escribir en `flink/resultados/`, logs de CloudWatch y, sólo si se usa VPC, ENIs |
+| [modules/flink/variables.tf](modules/flink/variables.tf) / [outputs.tf](modules/flink/outputs.tf) | Parámetros (paralelismo, watermark, checkpoints, VPC) y salidas (nombre, estado, ruta S3, log group) |
+| [modules/identity/main.tf](modules/identity/main.tf) | Ya existente: `processing-role` (confía en `kinesisanalytics.amazonaws.com`) y, al recibir `kinesis_stream_arns`, la lectura del stream (`GetRecords`, `GetShardIterator`, `DescribeStream`, `ListShards`, ...) |
+
+La aplicación se registra como Python mediante el grupo de propiedades `kinesis.analytics.flink.run.options` (`python = main.py`, `jarfile = lib/pyflink-dependencies.jar`). La configuración de negocio (stream, región, ruta de salida, watermark) viaja en el grupo `FlinkApplicationProperties`, de modo que el código no tiene nombres de cuenta ni de bucket fijos.
+
+**Red:** la aplicación corre **fuera de la VPC**. La VPC del Checkpoint 1 no tiene NAT y sólo tiene un endpoint Gateway de S3; si el job se conectara a ella no podría llegar a Kinesis ni a CloudWatch Logs. Sin VPC, Managed Flink usa los endpoints públicos de AWS con el rol IAM, que es todo lo que este job necesita. El módulo acepta `private_subnet_ids`/`security_group_ids`: si se completan, crea la `vpc_configuration` y agrega los permisos de ENI; en ese caso habría que sumar en `modules/network` endpoints de interfaz para Kinesis Data Streams, CloudWatch Logs y Monitoring.
+
+### 7. Despliegue
+
+Requisitos adicionales: Maven **o** Docker (para compilar el JAR del conector) y credenciales AWS vigentes.
+
+```powershell
+# 1. Empaquetar: compila lib/pyflink-dependencies.jar (conector Kinesis) y arma flink-app/flink-app.zip
+.\flink-app\build.ps1
+
+# 2. Desplegar (sube el ZIP a s3://<bucket>/flink/app/ y crea la aplicación en estado READY)
+cd environments\dev
+terraform init
+terraform plan
+terraform apply
+
+# 3. Iniciar el job: en terraform.tfvars poner  flink_start_application = true
+terraform apply
+
+# 4. Generar tráfico durante ~5 minutos, con eventos desordenados
+cd ..\..
+python .\scripts\kinesis_producer.py --lotes 30 --registros 20 --pausa 10 --max-retraso 20
+```
+
+Para cortar el costo: volver a `flink_start_application = false` y `terraform apply` (toma un snapshot y detiene la aplicación), o `terraform destroy`. Conviene iniciar y detener siempre con la variable: si se inicia desde la consola, el siguiente `apply` con `false` la detiene.
+
+Si cambia el código: `.\flink-app\build.ps1` y `terraform apply`. El hash del ZIP cambia, Terraform sube la nueva versión y actualiza la aplicación, que se reinicia restaurando el último snapshot.
+
+### 8. Validación
+
+```powershell
+# Estado de la aplicación (RUNNING) y paralelismo efectivo
+aws kinesisanalyticsv2 describe-application --application-name data-platform-dev-flink `
+  --query "ApplicationDetail.{Estado:ApplicationStatus,Version:ApplicationVersionId,Paralelismo:ApplicationConfigurationDescription.FlinkApplicationConfigurationDescription.ParallelismConfigurationDescription.CurrentParallelism}" --output table
+
+# Resultados por ventana en los logs (una línea por cliente y minuto)
+aws logs filter-log-events --log-group-name /aws/kinesis-analytics/data-platform-dev-flink `
+  --filter-pattern VENTANA --max-items 20 --query "events[].message" --output text
+
+# Alertas detectadas con el estado por cliente
+aws logs filter-log-events --log-group-name /aws/kinesis-analytics/data-platform-dev-flink `
+  --filter-pattern PICO_COMPRAS --max-items 10 --query "events[].message" --output text
+
+# Archivos confirmados en S3 (aparecen después de cada checkpoint)
+aws s3 ls s3://data-platform-dev-659500704179-bucket/flink/resultados/ --recursive
+```
+
+**Flink Dashboard:** consola de AWS -> Managed Apache Flink -> `data-platform-dev-flink` -> *Open Apache Flink dashboard*. En *Running Jobs* el grafo muestra la fuente Kinesis con el watermark, el operador de ventana (`WindowAggregate`), `deteccion-patrones-por-cliente` y el sink de archivos. En la pestaña *Checkpoints* se ven los checkpoints completados y el tamaño del estado; en *Watermarks* de cada operador, el avance del event time.
+
+La evidencia de la corrida (capturas del grafo y logs) se registra en [EVIDENCIA_FLINK.md](EVIDENCIA_FLINK.md).
+
+### 9. Ejecución local (opcional)
+
+Requiere Java 11 y el JAR compilado (`build.ps1`). Lee el stream real con las credenciales locales y escribe en `flink-app/output/`:
+
+```powershell
+cd flink-app
+python -m venv .venv; .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:IS_LOCAL = "true"
+python .\src\main.py
+```
+
+### 10. Errores comunes contemplados
+
+| Riesgo de la consigna | Cómo se cubre |
+|-----------------------|---------------|
+| Ignorar el checkpointing | `checkpointing_enabled = true` cada 60 s + snapshots con restauración automática |
+| Watermarks demasiado agresivos | 30 s de tolerancia, configurable sin tocar código; timeout de inactividad para shards sin datos |
+| Timestamps no parseables | `timestamp` se lee como texto y se normaliza; los inválidos no rompen el job |
+| Permisos excesivos | Política acotada a `flink/app/*`, `flink/resultados/*` y al log stream de la aplicación; lectura sólo del stream propio |
+
+### 11. Estado del checkpoint
+
+- [x] Aplicación PyFlink que consume el stream del Checkpoint 2.
+- [x] Watermark de 30 s sobre event time y timeout de inactividad.
+- [x] Ventanas tumbling de 1 minuto con conteos, sumas y promedios por cliente.
+- [x] `KeyedProcessFunction` con `ValueState` por cliente (acumulados y detección de picos).
+- [x] Módulo `modules/flink` con `aws_kinesisanalyticsv2_application`, código en S3, checkpoints, monitoreo y paralelismo.
+- [x] IAM: lectura de Kinesis (identity) + S3 y CloudWatch Logs (flink).
+- [x] `terraform validate` y `tflint --recursive` sin errores ni advertencias.
+- [x] `terraform apply` e inicio del job: `RUNNING` con paralelismo 2, checkpoints completados, 37 resultados de ventana y alertas en CloudWatch, archivos en S3 ([EVIDENCIA_FLINK.md](EVIDENCIA_FLINK.md)).
+- [ ] Capturas del grafo y de los checkpoints en el Flink Dashboard (`docs/evidencias-flink/`).

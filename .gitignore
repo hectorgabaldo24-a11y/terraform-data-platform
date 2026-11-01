@@ -35,3 +35,12 @@ tfplan
 
 # Evidencias locales de pruebas de Firehose
 evidencias/
+
+# Aplicacion Flink: artefactos de build y entorno local (se regeneran con build.ps1)
+flink-app/.venv/
+flink-app/target/
+flink-app/lib/
+flink-app/deployment/
+flink-app/output/
+__pycache__/
+*.pyc

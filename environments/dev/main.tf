@@ -89,23 +89,59 @@ module "identity" {
   data_bucket_arn = aws_s3_bucket.data_platform.arn
   data_prefix     = var.data_prefix
 
+  # Permitir que el rol de procesamiento lea nuestro stream.
+  kinesis_stream_arns = [module.kinesis.stream_arn]
+
   service_linked_role_services = var.service_linked_role_services
 }
 
-# Conecto el módulo con el entorno dev
-# agrego una llamada al módulo
-
+# Ingesta (Pre-entrega 2): Kinesis Data Stream + Firehose -> S3 (bronze).
 module "kinesis" {
   source = "../../modules/kinesis"
 
-  project_name   = "data-platform"
-  environment    = "dev"
-  s3_bucket_name = "data-platform-dev-659500704179-bucket"
+  project_name   = var.project_name
+  environment    = var.environment
+  s3_bucket_name = aws_s3_bucket.data_platform.id
 
   shard_count = 2
 
-  tags = {
-    Environment = "dev"
-    Project     = "data-platform"
-  }
+  tags = local.tags
 }
+
+# Procesamiento en tiempo real (Pre-entrega 4): Managed Service for Apache Flink.
+module "flink" {
+  source = "../../modules/flink"
+
+  project_name = var.project_name
+  environment  = var.environment
+  aws_region   = var.region
+
+  stream_name = module.kinesis.stream_name
+
+  # Reutiliza el rol de procesamiento de identity (ya tiene la lectura de Kinesis).
+  execution_role_arn  = module.identity.processing_role_arn
+  execution_role_name = module.identity.processing_role_name
+
+  artifact_bucket     = aws_s3_bucket.data_platform.id
+  artifact_local_path = "${path.root}/../../flink-app/flink-app.zip"
+
+  # Paralelismo 2 = un slot por shard del stream -> 2 KPUs de procesamiento.
+  parallelism         = var.flink_parallelism
+  parallelism_per_kpu = 1
+  autoscaling_enabled = false
+
+  watermark_delay_seconds = var.flink_watermark_delay_seconds
+  start_application       = var.flink_start_application
+
+  # Fuera de la VPC: la VPC del módulo network no tiene NAT ni endpoints de
+  # Kinesis/CloudWatch Logs, así que el job no podría alcanzar esos servicios.
+  private_subnet_ids = []
+  security_group_ids = []
+
+  tags = local.tags
+
+  # La política de lectura de Kinesis del rol vive en identity: debe existir
+  # antes de que el job arranque.
+  depends_on = [module.identity]
+}
+

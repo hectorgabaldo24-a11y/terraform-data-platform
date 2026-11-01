@@ -41,3 +41,21 @@ variable "service_linked_role_services" {
   type        = set(string)
   default     = []
 }
+
+variable "flink_parallelism" {
+  description = "Paralelismo de la aplicación Managed Flink (con 1 tarea por KPU equivale a las KPUs de procesamiento)"
+  type        = number
+  default     = 2
+}
+
+variable "flink_watermark_delay_seconds" {
+  description = "Tolerancia del watermark a eventos fuera de orden, en segundos"
+  type        = number
+  default     = 30
+}
+
+variable "flink_start_application" {
+  description = "true deja la aplicación Flink en ejecución tras el apply (costo por KPU-hora); false la deja en READY"
+  type        = bool
+  default     = false
+}
