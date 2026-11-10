@@ -1,0 +1,233 @@
+
+[1/18] CALL ops.sp_refrescar_stream()
+OK en 4.49 s (filas afectadas: 0)
+
+[2/18] SELECT shard_id, is_valid_json, COUNT(*) AS registros,
+shard_id | is_valid_json | registros | primera_llegada | ultima_llegada
+---------------------+---------------+-----------+-------------------------+------------------------
+shardId-000000000000 | False | 4 | 2026-11-10 16:27:23.983 | 2026-11-10 16:36:36.10
+shardId-000000000000 | True | 280 | 2026-11-10 16:16:22.767 | 2026-11-10 16:37:58.064
+shardId-000000000001 | False | 12 | 2026-11-10 16:16:22.767 | 2026-11-10 16:32:39.343
+shardId-000000000001 | True | 414 | 2026-11-10 16:16:22.764 | 2026-11-10 16:37:58.064
+(4 filas)
+OK en 0.27 s (filas afectadas: 4)
+
+[3/18] SELECT event_id, event_type, cliente_id, importe, event_ts, llegada_kinesis_ts, ingesta_redshift_ts
+event_id | event_type | cliente_id | importe | event_ts | llegada_kinesis_ts | ingesta_redshift_ts
+---------+------------+-------------+---------+---------------------------+-------------------------+--------------------
+240 | compra | cliente-010 | 308.56 | 2026-11-10 16:37:56.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+239 | consulta | cliente-009 | 54.02 | 2026-11-10 16:37:57.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+238 | compra | cliente-008 | 166.51 | 2026-11-10 16:37:59.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+237 | consulta | cliente-007 | 365.80 | 2026-11-10 16:37:58.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+236 | compra | cliente-006 | 342.04 | 2026-11-10 16:37:56.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+235 | consulta | cliente-005 | 46.73 | 2026-11-10 16:37:55.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+234 | compra | cliente-004 | 278.08 | 2026-11-10 16:37:59.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+233 | consulta | cliente-003 | 80.67 | 2026-11-10 16:37:57.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+232 | compra | cliente-002 | 136.70 | 2026-11-10 16:37:59.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+231 | consulta | cliente-001 | 58.72 | 2026-11-10 16:38:00.21478 | 2026-11-10 16:37:58.064 | 2026-11-10 16:38:05
+(10 filas)
+OK en 0.17 s (filas afectadas: 10)
+
+[4/18] SELECT column_name, data_type, character_maximum_length, numeric_precision, numeric_scale
+column_name | data_type | character_maximum_length | numeric_precision | numeric_scale
+--------------------+-----------------------------+--------------------------+-------------------+--------------
+shard_id | character | 20 | NULL | NULL
+sequence_number | character varying | 128 | NULL | NULL
+llegada_kinesis_ts | timestamp without time zone | NULL | NULL | NULL
+ingesta_redshift_ts | timestamp without time zone | NULL | NULL | NULL
+event_id | bigint | NULL | 64 | 0
+event_type | character varying | 48 | NULL | NULL
+cliente_id | character varying | 64 | NULL | NULL
+importe | numeric | NULL | 12 | 2
+event_ts | timestamp without time zone | NULL | NULL | NULL
+es_valido | boolean | NULL | NULL | NULL
+motivo_invalido | character varying | 26 | NULL | NULL
+payload | super | NULL | NULL | NULL
+(12 filas)
+OK en 0.13 s (filas afectadas: 12)
+
+[5/18] SELECT motivo_invalido, COUNT(*) AS registros,
+motivo_invalido | registros | ejemplo
+---------------------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------
+campo_obligatorio_faltante | 19 | {"event_id":15,"event_type":"consulta","importe":261.96,"timestamp":"2026-11-10T16:16:25.282661+00:00"}
+json_invalido | 16 | null
+importe_no_numerico | 15 | {"event_id":123,"event_type":"consulta","cliente_id":"cliente-003","importe":"N/A","timestamp":"2026-11-10T16:30:53.036939+00:00"}
+timestamp_invalido | 14 | {"event_id":104,"event_type":"compra","cliente_id":"cliente-004","importe":316.24,"timestamp":"10/11/2026 25:61"}
+(4 filas)
+OK en 0.17 s (filas afectadas: 4)
+
+[6/18] SELECT minuto, SUM(operaciones) AS operaciones, SUM(compras) AS compras,
+minuto | operaciones | compras | importe_compras | compra_maxima
+--------------------+-------------+---------+-----------------+--------------
+2026-11-10 16:38:00 | 1 | 0 | 0.00 | NULL
+2026-11-10 16:37:00 | 98 | 50 | 12264.29 | 489.43
+2026-11-10 16:36:00 | 103 | 51 | 14506.72 | 488.40
+2026-11-10 16:35:00 | 28 | 14 | 3722.61 | 496.95
+2026-11-10 16:33:00 | 13 | 6 | 1575.73 | 433.03
+2026-11-10 16:32:00 | 94 | 50 | 12987.73 | 483.64
+2026-11-10 16:31:00 | 92 | 47 | 12649.03 | 495.47
+2026-11-10 16:30:00 | 96 | 48 | 11911.57 | 481.44
+2026-11-10 16:29:00 | 37 | 19 | 6003.17 | 499.61
+2026-11-10 16:27:00 | 50 | 26 | 6759.99 | 478.78
+(10 filas)
+OK en 0.22 s (filas afectadas: 10)
+
+[7/18] SELECT minuto, resultado, registros
+minuto | resultado | registros
+--------------------+----------------------------+----------
+2026-11-10 16:37:00 | ok | 96
+2026-11-10 16:37:00 | campo_obligatorio_faltante | 2
+2026-11-10 16:37:00 | timestamp_invalido | 1
+2026-11-10 16:37:00 | importe_no_numerico | 1
+2026-11-10 16:36:00 | ok | 116
+2026-11-10 16:36:00 | importe_no_numerico | 2
+2026-11-10 16:36:00 | timestamp_invalido | 1
+2026-11-10 16:36:00 | json_invalido | 1
+2026-11-10 16:35:00 | ok | 18
+2026-11-10 16:35:00 | campo_obligatorio_faltante | 1
+2026-11-10 16:35:00 | json_invalido | 1
+2026-11-10 16:33:00 | ok | 19
+2026-11-10 16:33:00 | json_invalido | 1
+2026-11-10 16:32:00 | ok | 88
+2026-11-10 16:32:00 | importe_no_numerico | 5
+(15 filas)
+OK en 0.15 s (filas afectadas: 15)
+
+[8/18] SELECT *
+cliente_id | minutos_activos | compras_15m | importe_15m | importe_por_minuto | ventanas_historicas | importe_promedio_ventana | ratio_vs_historico | alertas_historicas | ultima_ventana_historica | ultimo_minuto | diagnostico
+------------+-----------------+-------------+-------------+--------------------+---------------------+--------------------------+--------------------+--------------------+--------------------------+---------------------+------------
+cliente-001 | 10 | 0 | 0.00 | 0.00 | 6 | 0.00 | NULL | 0 | 2026-11-01 22:14:00 | 2026-11-10 16:38:00 | SIN_COMPRAS
+cliente-002 | 9 | 61 | 16682.42 | 1853.60 | 5 | 2411.32 | 0.77 | 1 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | NORMAL
+cliente-003 | 9 | 0 | 0.00 | 0.00 | 6 | 0.00 | NULL | 0 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | SIN_COMPRAS
+cliente-004 | 8 | 60 | 16367.79 | 2045.97 | 6 | 2424.42 | 0.84 | 1 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | NORMAL
+cliente-005 | 9 | 0 | 0.00 | 0.00 | 6 | 0.00 | NULL | 0 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | SIN_COMPRAS
+cliente-006 | 9 | 63 | 17861.02 | 1984.55 | 6 | 2058.50 | 0.96 | 1 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | NORMAL
+cliente-007 | 8 | 0 | 0.00 | 0.00 | 6 | 0.00 | NULL | 0 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | SIN_COMPRAS
+cliente-008 | 9 | 63 | 15439.12 | 1715.45 | 6 | 2016.18 | 0.85 | 1 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | NORMAL
+cliente-009 | 9 | 0 | 0.00 | 0.00 | 6 | 0.00 | NULL | 0 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | SIN_COMPRAS
+cliente-010 | 9 | 64 | 16030.49 | 1781.16 | 6 | 2258.82 | 0.79 | 1 | 2026-11-01 22:14:00 | 2026-11-10 16:37:00 | NORMAL
+(10 filas)
+OK en 1.31 s (filas afectadas: 10)
+
+[9/18] SELECT s.cliente_id,
+cliente_id | compras_stream_ultima_hora | importe_stream_ultima_hora | ventanas_flink | importe_acumulado_iceberg | importe_total_cliente | ultima_ventana_iceberg
+------------+----------------------------+----------------------------+----------------+---------------------------+-----------------------+-----------------------
+cliente-001 | 0 | 0.00 | 10 | 0.00 | 0.00 | 2026-11-01 22:14:00
+cliente-002 | 66 | 17890.89 | 9 | 21597.10 | 39487.99 | 2026-11-01 22:14:00
+cliente-003 | 0 | 0.00 | 9 | 0.00 | 0.00 | 2026-11-01 22:14:00
+cliente-004 | 64 | 17322.87 | 9 | 23150.39 | 40473.26 | 2026-11-01 22:14:00
+cliente-005 | 0 | 0.00 | 9 | 0.00 | 0.00 | 2026-11-01 22:14:00
+cliente-006 | 67 | 18895.69 | 10 | 19435.42 | 38331.11 | 2026-11-01 22:14:00
+cliente-007 | 0 | 0.00 | 10 | 0.00 | 0.00 | 2026-11-01 22:14:00
+cliente-008 | 65 | 16208.59 | 10 | 21186.50 | 37395.09 | 2026-11-01 22:14:00
+cliente-009 | 0 | 0.00 | 10 | 0.00 | 0.00 | 2026-11-01 22:14:00
+cliente-010 | 69 | 17284.52 | 10 | 23677.08 | 40961.60 | 2026-11-01 22:14:00
+(10 filas)
+OK en 1.18 s (filas afectadas: 10)
+
+[10/18] SELECT schemaname, tablename, location,
+schemaname | tablename | location | ultimo_commit_iceberg | parametros_glue
+-----------+-------------------+----------------------------------------------------------------------------------------+-----------------------+---------------------------------------------------------------------------------------------------------------------------------
+lakehouse | ventanas_clientes | s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes | 2026-11-01 21:52:17 | {"commit.retry.num-retries":"10","iceberg.table.lastUpdatedMs":"1793569937146","iceberg.table.uuid":"7c5872cc-65ca-4195-a1cb-660
+(1 filas)
+OK en 0.15 s (filas afectadas: 1)
+
+[11/18] SELECT columnnum, columnname, external_type, part_key
+columnnum | columnname | external_type | part_key
+----------+--------------------------+---------------+---------
+1 | window_start | timestamp | 0
+2 | window_end | timestamp | 0
+3 | cliente_id | string | 0
+4 | total_operaciones | bigint | 0
+5 | cantidad_compras | bigint | 0
+6 | importe_total_compras | double | 0
+7 | importe_promedio_compras | double | 0
+8 | ventanas_procesadas | bigint | 0
+9 | importe_acumulado | double | 0
+10 | variacion_pct | double | 0
+11 | alerta | string | 0
+(11 filas)
+OK en 0.17 s (filas afectadas: 11)
+
+[12/18] SELECT start_time, TRIM(table_name) AS tabla, TRIM(file_format) AS formato,
+start_time | tabla | formato | scanned_files | returned_rows | returned_bytes | duracion_us
+---------------------------+---------------------------------------+---------+---------------+---------------+----------------+------------
+2026-11-10 16:38:24.458162 | analytics.lakehouse.ventanas_clientes | Iceberg | 10 | 59 | 2301 | 88606
+2026-11-10 16:38:22.407932 | analytics.lakehouse.ventanas_clientes | Iceberg | 10 | 59 | 2125 | 96968
+2026-11-10 16:34:27.707647 | analytics.lakehouse.ventanas_clientes | Iceberg | 10 | 59 | 1357 | 132077
+2026-11-10 16:34:25.03926 | analytics.lakehouse.ventanas_clientes | Iceberg | 10 | 59 | 0 | 43958
+2026-11-10 16:34:13.499976 | analytics.lakehouse.ventanas_clientes | Iceberg | 10 | 59 | 2301 | 9879
+(5 filas)
+OK en 1.12 s (filas afectadas: 5)
+
+[13/18] SELECT *
+minuto | registros | lag_kinesis_a_redshift_prom_s | lag_kinesis_a_redshift_max_s | lag_evento_a_kinesis_prom_s | ultimo_refresco_ts
+--------------------+-----------+-------------------------------+------------------------------+-----------------------------+--------------------
+2026-11-10 16:37:00 | 100 | 19.5 | 42.0 | 0.4 | 2026-11-10 16:38:05
+2026-11-10 16:36:00 | 120 | 30.7 | 58.3 | 0.6 | 2026-11-10 16:37:11
+2026-11-10 16:35:00 | 20 | 21.5 | 21.5 | -0.8 | 2026-11-10 16:36:11
+2026-11-10 16:33:00 | 20 | 8.1 | 8.1 | 0.7 | 2026-11-10 16:33:11
+2026-11-10 16:32:00 | 100 | 31.2 | 54.8 | 0.3 | 2026-11-10 16:33:11
+2026-11-10 16:31:00 | 100 | 29.2 | 52.8 | 0.4 | 2026-11-10 16:32:11
+2026-11-10 16:30:00 | 100 | 28.3 | 50.8 | 0.0 | 2026-11-10 16:31:11
+2026-11-10 16:29:00 | 40 | 24.9 | 30.6 | 0.2 | 2026-11-10 16:30:16
+2026-11-10 16:27:00 | 60 | 5.0 | 7.0 | -2.8 | 2026-11-10 16:27:54
+2026-11-10 16:16:00 | 50 | 593.1 | 594.2 | -3.1 | 2026-11-10 16:26:17
+(10 filas)
+OK en 0.44 s (filas afectadas: 10)
+
+[14/18] SELECT *
+scan_ts | mv_name | shard_id | scanned_rows | skipped_rows | scanned_bytes | lag_from_latest | min_latency_s | max_latency_s | stream_record_time_min | stream_record_time_max
+---------------------------+----------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+--------------+--------------+---------------+-----------------+---------------+---------------+-------------------------+------------------------
+2026-11-10 16:38:11.915292 | mv_eventos_kinesis | shardId-000000000000 | 0 | 0 | 0 | 0 | NULL | NULL | 2000-01-01 00:00:00 | 2000-01-01 00:00:00
+2026-11-10 16:38:11.887683 | mv_eventos_kinesis | shardId-000000000001 | 0 | 0 | 0 | 0 | NULL | NULL | 2000-01-01 00:00:00 | 2000-01-01 00:00:00
+2026-11-10 16:38:05.593937 | mv_eventos_kinesis | shardId-000000000001 | 48 | 0 | 10276 | 0 | 7 | 43 | 2026-11-10 16:37:22.96 | 2026-11-10 16:37:58.064
+2026-11-10 16:38:05.503038 | mv_eventos_kinesis | shardId-000000000000 | 32 | 0 | 6847 | 0 | 7 | 43 | 2026-11-10 16:37:22.963 | 2026-11-10 16:37:58.064
+2026-11-10 16:37:11.863258 | mv_eventos_kinesis | shardId-000000000001 | 72 | 0 | 15466 | 0 | 0 | 59 | 2026-11-10 16:36:12.722 | 2026-11-10 16:37:11.149
+2026-11-10 16:37:11.860958 | mv_eventos_kinesis | shardId-000000000000 | 48 | 0 | 10173 | 0 | 0 | 59 | 2026-11-10 16:36:12.725 | 2026-11-10 16:37:11.149
+2026-11-10 16:36:11.77051 | mv_eventos_kinesis | shardId-000000000001 | 24 | 0 | 5148 | 0 | 10 | 22 | 2026-11-10 16:35:49.504 | 2026-11-10 16:36:01.055
+2026-11-10 16:36:11.763426 | mv_eventos_kinesis | shardId-000000000000 | 16 | 0 | 3294 | 0 | 10 | 22 | 2026-11-10 16:35:49.506 | 2026-11-10 16:36:01.055
+(8 filas)
+OK en 2.01 s (filas afectadas: 8)
+
+[15/18] SELECT *
+vista | start_time | duracion_ms | status | refresh_type
+--------------------------------+----------------------------+-------------+------------------------------------------------------------------------------------------------+---------------------------------
+analytics.mv_calidad_por_minuto | 2026-11-10 16:38:14.130802 | 335 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+analytics.mv_ventas_por_minuto | 2026-11-10 16:38:13.640967 | 487 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+stream.mv_eventos | 2026-11-10 16:38:13.225419 | 260 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+stream.mv_eventos_kinesis | 2026-11-10 16:38:11.579892 | 1456 | Refresh successfully updated MV incrementally. Stream returned no new data | Manual
+analytics.mv_calidad_por_minuto | 2026-11-10 16:38:08.751663 | 708 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+analytics.mv_ventas_por_minuto | 2026-11-10 16:38:07.742821 | 1006 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+stream.mv_eventos | 2026-11-10 16:38:06.838645 | 376 | Refresh successfully updated MV incrementally, but MV depends on an MV that is not up to date. | Manual
+stream.mv_eventos_kinesis | 2026-11-10 16:38:05.19538 | 1471 | Refresh successfully updated MV incrementally | Manual
+(8 filas)
+OK en 1.58 s (filas afectadas: 8)
+
+[16/18] SELECT schema_name, name, autorefresh, is_stale, state
+schema_name | name | autorefresh | is_stale | state
+---------------------------------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------+-------------+----------+------
+analytics | mv_calidad_por_minuto | f | f | 1
+analytics | mv_ventas_por_minuto | f | f | 1
+stream | mv_eventos | f | f | 1
+stream | mv_eventos_kinesis | f | t | 1
+(4 filas)
+OK en 0.55 s (filas afectadas: 4)
+
+[17/18] SELECT record_time, mv_name, partition_id, error_code, error_reason
+record_time | mv_name | partition_id | error_code | error_reason
+------------+---------+--------------+------------+-------------
+(0 filas)
+OK en 2.08 s (filas afectadas: 0)
+
+[18/18] SELECT TRIM(u.usename)                            AS usuario_bd,
+usuario_bd | sentencia | estado | start_time | duracion_ms
+----------------------------------------+--------------------------------+---------+----------------------------+------------
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:38:11.57476 | 3079
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:37:11.530823 | 3850
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:36:11.435586 | 3950
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:35:11.448125 | 3160
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:34:11.445946 | 3706
+IAMR:data-platform-dev-redshift-refresh | CALL ops.sp_refrescar_stream() | success | 2026-11-10 16:33:11.386567 | 4467
+(6 filas)
+OK en 0.96 s (filas afectadas: 6)

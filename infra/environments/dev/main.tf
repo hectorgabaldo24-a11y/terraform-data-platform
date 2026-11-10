@@ -175,3 +175,30 @@ module "lakehouse" {
   depends_on = [aws_s3_bucket_versioning.data_platform]
 }
 
+
+# Analítica in-stream (Pre-entrega 6): Redshift Serverless con Streaming Ingestion
+# desde Kinesis y EXTERNAL SCHEMA sobre el Glue Data Catalog (tablas Iceberg).
+# El SQL (esquemas, vistas materializadas, roles) está en sql/redshift_streaming.sql.
+module "redshift" {
+  source = "../../modules/redshift"
+
+  name_prefix = local.name_prefix
+
+  vpc_id     = module.network.vpc_id
+  vpc_cidr   = module.network.vpc_cidr
+  subnet_ids = module.network.private_subnet_ids
+
+  base_capacity         = var.redshift_base_capacity
+  max_rpu_hours_per_day = var.redshift_max_rpu_hours_per_day
+
+  kinesis_stream_arn  = module.kinesis.stream_arn
+  kinesis_stream_name = module.kinesis.stream_name
+
+  glue_database_name    = module.lakehouse.database_name
+  lakehouse_bucket_name = aws_s3_bucket.data_platform.id
+  lakehouse_prefix      = "lakehouse"
+
+  refresh_schedule_enabled = var.redshift_refresh_schedule_enabled
+
+  tags = local.tags
+}

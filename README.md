@@ -8,6 +8,7 @@ Plataforma de datos en AWS construida de forma incremental con Terraform:
 | 2 | Ingesta: Kinesis Data Streams + Firehose -> S3 (bronze) | [Checkpoint 2](#checkpoint-2--ingesta-en-tiempo-real-con-amazon-kinesis) |
 | 4 | Procesamiento en tiempo real: Managed Service for Apache Flink | [Checkpoint 4](#checkpoint-4--procesamiento-en-tiempo-real-con-managed-service-for-apache-flink) |
 | 5 | Lakehouse: tablas Apache Iceberg en S3, AWS Glue Data Catalog y Athena | [Checkpoint 5](#checkpoint-5--lakehouse-con-apache-iceberg-aws-glue-data-catalog-y-athena) |
+| 6 | Analítica in-stream: Redshift Serverless con Streaming Ingestion desde Kinesis + JOIN con Iceberg | [Checkpoint 6](#checkpoint-6--analítica-avanzada-in-stream-con-amazon-redshift) |
 
 > **Dónde ejecutar Terraform:** todo el código Terraform está en `infra/` y la aplicación Flink en `app/`. Hay dos puntos de entrada: `infra/bootstrap/` (backend, una vez) y `infra/environments/dev/` (la plataforma, cuyo `main.tf` compone todos los módulos). Ver [Despliegue](#despliegue).
 
@@ -27,6 +28,7 @@ Plataforma de datos en AWS construida de forma incremental con Terraform:
 | Ingesta Kinesis + Firehose (Pre-entrega 2) | [infra/modules/kinesis](infra/modules/kinesis) · [scripts/](scripts) |
 | Aplicación Flink y su módulo Terraform (Pre-entrega 4) | [app/](app) · [infra/modules/flink](infra/modules/flink) · [EVIDENCIA_FLINK.md](EVIDENCIA_FLINK.md) |
 | Lakehouse: Glue `lakehouse_db`, tabla Iceberg, IAM y Athena (Pre-entrega 5) | [infra/modules/lakehouse](infra/modules/lakehouse) · [app/src/main.py](app/src/main.py) · [EVIDENCIA_LAKEHOUSE.md](EVIDENCIA_LAKEHOUSE.md) |
+| Redshift Serverless, Streaming Ingestion, vistas materializadas y JOIN con Iceberg (Pre-entrega 6) | [infra/modules/redshift](infra/modules/redshift) · [sql/redshift_streaming.sql](sql/redshift_streaming.sql) · [EVIDENCIA_REDSHIFT.md](EVIDENCIA_REDSHIFT.md) · [PDF](CheckPoint_Redshift_Gabaldo_Hector.pdf) |
 
 ## Estructura
 
@@ -39,7 +41,8 @@ Plataforma de datos en AWS construida de forma incremental con Terraform:
 │   │   ├── identity/         # Rol de procesamiento (Lambda/Flink) y rol de auditoría read-only (Pre-entrega 1)
 │   │   ├── kinesis/          # Kinesis Data Stream (2 shards, KMS), Firehose a S3 y alarmas (Pre-entrega 2)
 │   │   ├── flink/            # Managed Flink: aplicación, artefacto en S3, logs e IAM (Pre-entrega 4)
-│   │   └── lakehouse/        # Glue Data Catalog (lakehouse_db), tabla Iceberg, IAM y workgroup de Athena (Pre-entrega 5)
+│   │   ├── lakehouse/        # Glue Data Catalog (lakehouse_db), tabla Iceberg, IAM y workgroup de Athena (Pre-entrega 5)
+│   │   └── redshift/         # Redshift Serverless, roles IAM, refresco programado y dashboard (Pre-entrega 6)
 │   └── environments/
 │       ├── dev/              # main.tf que compone los módulos, backend, variables, outputs, terraform.tfvars
 │       └── prod/             # Ejemplo de reuso de los módulos: solo cambian backend key y tfvars
@@ -48,12 +51,14 @@ Plataforma de datos en AWS construida de forma incremental con Terraform:
 │   ├── src/main/java/...     # HadoopUtils reubicado para Iceberg en Managed Flink
 │   ├── pom.xml               # Conectores Kinesis + Iceberg + Hadoop empaquetados en un JAR
 │   └── build.ps1             # Compila el JAR (Maven/Docker) y arma app/flink-app.zip
-├── scripts/                  # Productor de eventos y validación de Firehose
+├── sql/                      # redshift_streaming.sql: todo el SQL de Redshift (Pre-entrega 6)
+├── scripts/                  # Productor, validación de Firehose, runner SQL (Data API) y generador del PDF
 ├── docs/                     # Capturas de evidencia (Flink, Glue, Athena)
 ├── .tflint.hcl               # Configuración de tflint (reglas terraform + aws)
 ├── PLAN_OUTPUT*.md · APPLY_OUTPUT.md · VERIFICACION*.md · EVIDENCIA.md   # Registros de la Pre-entrega 1
 ├── EVIDENCIA_FLINK.md        # Evidencia de ejecución de Flink (Pre-entrega 4)
 ├── EVIDENCIA_LAKEHOUSE.md    # Evidencia del lakehouse Iceberg + Glue + Athena (Pre-entrega 5)
+├── EVIDENCIA_REDSHIFT.md     # Evidencia de Redshift Streaming Ingestion (Pre-entrega 6)
 └── README.md
 ```
 
@@ -707,3 +712,69 @@ Al terminar, `flink_start_application = false` y `terraform apply`.
 - [x] Datos legibles en Athena con las transformaciones de Flink; partition pruning comprobado.
 - [x] 0 errores de concurrencia en los commits.
 - [ ] Capturas de la consola de Glue y de Athena en `docs/evidencias-lakehouse/` ([EVIDENCIA_LAKEHOUSE.md](EVIDENCIA_LAKEHOUSE.md)).
+
+## Checkpoint 6 — Analítica avanzada in-stream con Amazon Redshift
+
+Documento técnico completo (diagrama, SQL y evidencia): [CheckPoint_Redshift_Gabaldo_Hector.pdf](CheckPoint_Redshift_Gabaldo_Hector.pdf). Se genera con `python scripts/generar_informe_pdf.py` a partir de [docs/checkpoint6/informe.html](docs/checkpoint6/informe.html).
+
+### 1. Arquitectura
+
+```text
+Kinesis (data-platform-dev-events) ──┬─> Firehose ─> S3 ingesta/            (PE2)
+                                     ├─> Managed Flink ─> Iceberg + Glue     (PE4/PE5)
+                                     └─> Redshift Serverless: Streaming Ingestion, sin S3 (PE6)
+                                           kds."data-platform-dev-events"   EXTERNAL SCHEMA FROM KINESIS
+                                             -> stream.mv_eventos_kinesis   BRONZE: CAN_JSON_PARSE + JSON_PARSE -> SUPER
+                                             -> stream.mv_eventos           SILVER: tipos nativos + validación de contrato
+                                             -> analytics.mv_*_por_minuto   GOLD: ventas y calidad por minuto
+                                           lakehouse.ventanas_clientes      EXTERNAL SCHEMA FROM DATA CATALOG (Iceberg)
+                                           analytics.v_clientes_stream_vs_lakehouse   JOIN caliente + histórico
+EventBridge Scheduler (1 min) ─> Data API ─> CALL ops.sp_refrescar_stream()
+```
+
+### 2. Infraestructura ([infra/modules/redshift](infra/modules/redshift))
+
+| Recurso | Configuración |
+|---------|---------------|
+| Namespace + workgroup Serverless | 8 RPU, privado (`publicly_accessible = false`), `require_ssl`, contraseña del admin administrada por Redshift en Secrets Manager |
+| `redshift-service-role` (`IAM_ROLE default`) | `kinesis:DescribeStream/DescribeStreamSummary/GetShardIterator/GetRecords/ListShards` sobre el stream, `kms:Decrypt` sólo vía Kinesis, `glue:Get*` sobre `lakehouse_db`, `s3:GetObject` sobre `lakehouse/*` |
+| `redshift-analyst` | Credenciales IAM temporales (`GetCredentials` + Data API). El tag `RedshiftDbRoles = analytics_role` le asigna el rol de base de datos |
+| `redshift-refresh` + EventBridge Scheduler | `rate(1 minute)`, Data API sin secreto, rol de base de datos `stream_refresher` (sólo `EXECUTE` del procedimiento) |
+| Usage limit, security group, dashboard | 16 RPU-hora/día (`deactivate`), 5439 sólo desde la VPC, dashboard de CloudWatch con IteratorAge y RPU |
+
+Redshift Serverless exige subredes en 3 AZ. Por eso `az_count` de dev pasó de 2 a 3: se agregó una subred y no se recreó ningún recurso.
+
+### 3. Despliegue y prueba
+
+```bash
+cd infra/environments/dev && terraform apply
+SECRET=$(terraform output -raw redshift_admin_secret_arn); ANALYST=$(terraform output -raw redshift_analyst_role_arn); cd ../../..
+python scripts/redshift_sql.py --secret-arn $SECRET --file sql/redshift_streaming.sql            # objetos, roles y permisos
+# redshift_refresh_schedule_enabled = true en terraform.tfvars + terraform apply (refresco cada minuto)
+python scripts/kinesis_producer.py --lotes 12 --registros 20 --pausa 10 --max-retraso 5 --anomalias 8
+python scripts/redshift_sql.py --secret-arn $SECRET --file sql/redshift_streaming.sql --seccion validacion
+python scripts/redshift_sql.py --profile terraform-dev --role-arn $ANALYST --file sql/redshift_streaming.sql --seccion validacion-analista --continue-on-error
+```
+
+`redshift_sql.py` usa la Redshift Data API (HTTPS + IAM), así que no hace falta abrir la red del workgroup. Con `--anomalias`, el productor agrega eventos con *schema drift*: JSON roto, campo faltante, importe como texto, timestamp con otro formato y campo nuevo.
+
+### 4. Decisiones de diseño (comprobadas en el workgroup)
+
+* **Schema drift:** bronze sólo valida (`CAN_JSON_PARSE`) y guarda el evento como SUPER, así que un registro roto no detiene la ingesta. Silver convierte desde SUPER en modo *lax*: un tipo incorrecto da NULL, nunca un error de casting. El motivo del rechazo queda en `motivo_invalido`.
+* **Refresco incremental:** convertir VARCHAR→TIMESTAMP, `TO_TIMESTAMP` y `DATE_TRUNC` sobre TIMESTAMPTZ son funciones *mutables* y obligan a recalcular la vista completa. Por eso se convierte SUPER→TIMESTAMP con un contrato en UTC. Las 4 vistas quedan con `svv_mv_info.state = 1`.
+* **Cadencia:** las vistas anidadas no admiten AUTO REFRESH, y en Serverless AUTO REFRESH sobre el stream mantiene el cómputo activo. EventBridge refresca la cadena cada 60 s, con `COMMIT` entre capas: cada ciclo tarda 3–4,5 s y el lag promedio es de 20–30 s.
+* **Seguridad:** `analytics_role` lee `analytics`, `lakehouse` y `monitoring.v_lag_ingesta`. Si intenta leer `stream` o `kds` obtiene *permission denied*.
+
+### 5. Costos
+
+El scheduler queda **apagado por defecto** (`redshift_refresh_schedule_enabled = false`), porque refrescar cada minuto mantiene el workgroup activo (8 RPU ≈ US$3/h). Sin consultas no hay cargo de cómputo. Para dar de baja sólo esta capa: `terraform destroy -target=module.redshift`.
+
+### 6. Estado del checkpoint
+
+- [x] Módulo Terraform: Redshift Serverless, IAM (Kinesis, KMS, Glue, S3), scheduler, usage limit y dashboard.
+- [x] `EXTERNAL SCHEMA` de Kinesis y vistas materializadas bronze/silver/gold con parseo de JSON a tipos nativos.
+- [x] `EXTERNAL SCHEMA` del Glue Data Catalog y JOIN stream + Iceberg en la misma sesión.
+- [x] Refresco incremental programado cada 1 minuto y monitoreo del lag.
+- [x] Acceso restringido al rol `analytics_role`, con autenticación IAM entre servicios.
+- [x] SQL consolidado en [sql/redshift_streaming.sql](sql/redshift_streaming.sql) y evidencia en [docs/evidencias-redshift/](docs/evidencias-redshift/).
+- [ ] Capturas de consola en `docs/evidencias-redshift/` (ver [EVIDENCIA_REDSHIFT.md](EVIDENCIA_REDSHIFT.md)) y regeneración del PDF.

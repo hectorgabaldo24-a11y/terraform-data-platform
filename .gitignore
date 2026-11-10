@@ -44,3 +44,7 @@ app/deployment/
 app/output/
 __pycache__/
 *.pyc
+
+# Documento técnico (Pre-entrega 6): HTML intermedio y perfil temporal del navegador
+docs/checkpoint6/informe_generado.html
+docs/checkpoint6/.perfil-navegador/

@@ -9,6 +9,11 @@ asi las ventanas de 1 minuto se cierran y el watermark avanza:
 
 --max-retraso resta a cada `timestamp` un retraso aleatorio (0..N segundos)
 para simular eventos que llegan desordenados por la red.
+
+--anomalias P (Pre-entrega 6) reemplaza ~P% de los eventos por registros con
+"schema drift" para validar la vista materializada de Redshift:
+
+    python scripts/kinesis_producer.py --lotes 10 --registros 20 --pausa 10 --anomalias 10
 """
 
 import argparse
@@ -35,6 +40,12 @@ def parse_args():
         default=0,
         help="Retraso aleatorio maximo (segundos) aplicado al timestamp del evento",
     )
+    parser.add_argument(
+        "--anomalias",
+        type=float,
+        default=0,
+        help="Porcentaje de eventos con schema drift (JSON roto, tipos o campos cambiados)",
+    )
     return parser.parse_args()
 
 
@@ -49,6 +60,31 @@ def construir_evento(event_id, max_retraso):
         "importe": round(random.uniform(10, 500), 2),
         "timestamp": momento.isoformat(),
     }
+
+
+# Variantes de schema drift. Las cuatro primeras deben quedar marcadas como
+# inválidas en Redshift; la última (campo nuevo) es una evolución compatible.
+ANOMALIAS = [
+    "json_roto",          # no es JSON
+    "importe_texto",      # importe llega como string no numérico
+    "sin_cliente",        # falta un campo obligatorio
+    "timestamp_invalido", # timestamp con formato desconocido
+    "campo_nuevo",        # campo adicional: válido, se ignora
+]
+
+
+def aplicar_anomalia(evento, tipo):
+    if tipo == "json_roto":
+        return '{"event_id": ' + str(evento["event_id"]) + ', "cliente_id": "cliente-x"'
+    if tipo == "importe_texto":
+        evento["importe"] = "N/A"
+    elif tipo == "sin_cliente":
+        del evento["cliente_id"]
+    elif tipo == "timestamp_invalido":
+        evento["timestamp"] = "10/11/2026 25:61"
+    elif tipo == "campo_nuevo":
+        evento["canal"] = "app-movil"
+    return json.dumps(evento)
 
 
 def enviar(client, records):
@@ -84,15 +120,22 @@ def main():
 
     event_id = 0
     delivered = 0
+    anomalias = {}
 
     for lote in range(1, args.lotes + 1):
         records = []
         for _ in range(args.registros):
             event_id += 1
             event = construir_evento(event_id, args.max_retraso)
+            partition_key = event["cliente_id"]
+            cuerpo = json.dumps(event)
+            if args.anomalias > 0 and random.uniform(0, 100) < args.anomalias:
+                tipo = random.choice(ANOMALIAS)
+                cuerpo = aplicar_anomalia(event, tipo)
+                anomalias[tipo] = anomalias.get(tipo, 0) + 1
             records.append({
-                "Data": (json.dumps(event) + "\n").encode("utf-8"),
-                "PartitionKey": event["cliente_id"],
+                "Data": (cuerpo + "\n").encode("utf-8"),
+                "PartitionKey": partition_key,
             })
 
         delivered += enviar(client, records)
@@ -104,6 +147,8 @@ def main():
     print(f"Proceso terminado. Registros enviados: {delivered}")
     print(f"Stream: {STREAM_NAME}")
     print(f"Claves de partición: {CLIENTES} clientes diferentes")
+    if anomalias:
+        print(f"Eventos con schema drift: {sum(anomalias.values())} {anomalias}")
 
 
 if __name__ == "__main__":

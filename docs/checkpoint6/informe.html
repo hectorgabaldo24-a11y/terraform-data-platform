@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckPoint Redshift</title>
+<style>
+  :root {
+    --ink: #1b2430;
+    --muted: #5b6675;
+    --line: #d5dbe3;
+    --soft: #f3f5f8;
+    --accent: #1f5fa8;
+    --ok: #1d7a46;
+    --bad: #b3261e;
+  }
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Calibri, Arial, sans-serif; color: var(--ink); background: #fff; font-size: 10.5pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 22pt; margin: 0 0 6px; color: var(--accent); }
+  h2 { font-size: 15pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--accent); break-after: avoid; }
+  h3 { font-size: 12pt; margin: 16px 0 6px; break-after: avoid; }
+  p { margin: 6px 0; }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: 9pt; background: var(--soft); padding: 0 3px; border-radius: 3px; }
+  pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 7.8pt; line-height: 1.35; background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+  pre.sql { font-size: 7.4pt; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+  th, td { border: 1px solid var(--line); padding: 3px 6px; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  table.doc { font-size: 9.5pt; }
+  table.res { font-family: Consolas, "Cascadia Mono", monospace; font-size: 7pt; line-height: 1.25; }
+  table.res th { font-weight: 600; }
+  table.res th, table.res td { overflow-wrap: anywhere; word-break: break-word; padding: 2px 4px; }
+  tr.nulo td { color: var(--muted); }
+  .resultado { border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; margin: 8px 0; break-inside: avoid; }
+  .sql-head { font-family: Consolas, monospace; font-size: 8pt; color: var(--accent); margin-bottom: 4px; }
+  .meta { font-size: 7.5pt; color: var(--muted); }
+  .error { font-family: Consolas, monospace; font-size: 8pt; color: var(--bad); font-weight: 600; margin: 3px 0; }
+  .portada { padding: 60px 0 30px; border-bottom: 3px solid var(--accent); margin-bottom: 18px; }
+  .portada .sub { font-size: 13pt; color: var(--muted); }
+  .portada table { width: auto; margin-top: 18px; font-size: 10pt; }
+  .portada td { border: none; padding: 2px 14px 2px 0; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .nota { border-left: 4px solid var(--accent); background: var(--soft); padding: 6px 10px; margin: 8px 0; font-size: 9.5pt; }
+  figure { margin: 10px 0; break-inside: avoid; }
+  figure img { max-width: 100%; border: 1px solid var(--line); }
+  figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 3px; }
+  figure.pendiente div { border: 2px dashed #b9c2cf; color: var(--muted); padding: 26px; text-align: center; font-size: 9.5pt; }
+  .diagrama { width: 100%; }
+  .salto { break-before: page; }
+  ul { margin: 4px 0 4px 18px; padding: 0; }
+  li { margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<section class="portada">
+  <h1>Pre-entrega 6 — Analítica avanzada in-stream con Amazon Redshift</h1>
+  <div class="sub">Redshift Streaming Ingestion desde Kinesis, vistas materializadas de tiempo real e integración con el lakehouse Apache Iceberg</div>
+  <table>
+    <tr><td><b>Autor</b></td><td>Hector Gabaldo</td></tr>
+    <tr><td><b>Fecha</b></td><td>10/11/2026</td></tr>
+    <tr><td><b>Cuenta / región</b></td><td>659500704179 · us-east-1</td></tr>
+    <tr><td><b>Repositorio</b></td><td>terraform-data-platform · rama <code>feature/lakehouse-iceberg</code></td></tr>
+    <tr><td><b>Código</b></td><td><code>infra/modules/redshift</code> · <code>sql/redshift_streaming.sql</code> · <code>scripts/redshift_sql.py</code></td></tr>
+  </table>
+</section>
+
+<h2>1. Resumen</h2>
+<p>Se agregó a la plataforma una capa de consulta analítica de baja latencia con <b>Amazon Redshift Serverless</b>, desplegada con Terraform. Redshift lee el stream <code>data-platform-dev-events</code> con <b>Streaming Ingestion</b>, sin pasar por S3. Tres capas de vistas materializadas validan el JSON, lo convierten a tipos nativos y lo agregan por minuto. Un <code>EXTERNAL SCHEMA</code> sobre el Glue Data Catalog permite consultar con JOIN, en la misma sesión SQL, los datos calientes del stream y el histórico que Flink escribe en Apache Iceberg (Pre-entrega 5).</p>
+
+<table class="doc">
+  <tr><th>Criterio de evaluación</th><th>Resultado</th><th>Evidencia</th></tr>
+  <tr><td><b>Funcionalidad:</b> datos de Kinesis a Redshift sin errores de casting</td><td class="ok">Cumplido</td><td>710 registros ingeridos (64 con schema drift), 0 errores en <code>sys_stream_scan_errors</code>. Los registros con <i>schema drift</i> se conservan y se clasifican, sin cortar la ingesta (§6.1, §6.2)</td></tr>
+  <tr><td><b>Integración:</b> Iceberg y stream en la misma sesión SQL</td><td class="ok">Cumplido</td><td>Vista <code>analytics.v_clientes_stream_vs_lakehouse</code> y JOIN ad hoc; Redshift lee la tabla como <code>file_format = Iceberg</code> (§6.4, §6.5)</td></tr>
+  <tr><td><b>Seguridad:</b> autenticación IAM entre servicios</td><td class="ok">Cumplido</td><td>Redshift→Kinesis/Glue/S3 con <code>IAM_ROLE default</code>; scheduler y analistas con credenciales IAM temporales; rol <code>analytics_role</code> sin acceso al dato crudo (§3, §6.6)</td></tr>
+  <tr><td><b>Claridad:</b> SQL comentado y con buenas prácticas de nombrado</td><td class="ok">Cumplido</td><td>Un único script por secciones, con convenciones <code>mv_</code>/<code>v_</code>/<code>sp_</code> y sufijo <code>_ts</code> (§5)</td></tr>
+</table>
+
+<h2>2. Arquitectura actualizada</h2>
+<svg class="diagrama" viewBox="0 0 1110 590" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3d4a5c"/>
+    </marker>
+    <marker id="fla" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f5fa8"/>
+    </marker>
+  </defs>
+  <style>
+    .b { stroke-width: 1.3; rx: 6; }
+    .ing { fill: #fff3e6; stroke: #d97a1a; }
+    .lk  { fill: #eaf6ee; stroke: #2e8b57; }
+    .rs  { fill: #e8f0fb; stroke: #1f5fa8; }
+    .iam { fill: #fdecec; stroke: #b3261e; }
+    .ops { fill: #f2f2f2; stroke: #6b7686; }
+    .t  { font-size: 12px; font-weight: 600; fill: #1b2430; }
+    .s  { font-size: 10px; fill: #3d4a5c; }
+    .m  { font-size: 9.5px; fill: #3d4a5c; font-family: Consolas, monospace; }
+    .lab { font-size: 9.5px; fill: #1f5fa8; font-weight: 600; }
+    .a  { fill: none; stroke: #3d4a5c; stroke-width: 1.4; }
+    .aa { fill: none; stroke: #1f5fa8; stroke-width: 2.2; }
+    .d  { fill: none; stroke: #6b7686; stroke-width: 1.3; stroke-dasharray: 4 3; }
+  </style>
+
+  <!-- Productor y Kinesis -->
+  <rect class="b ops" x="20" y="270" width="140" height="60"/>
+  <text class="t" x="90" y="295" text-anchor="middle">Productor</text>
+  <text class="m" x="90" y="312" text-anchor="middle">kinesis_producer.py</text>
+
+  <rect class="b ing" x="190" y="250" width="160" height="100"/>
+  <text class="t" x="270" y="275" text-anchor="middle">Kinesis Data Streams</text>
+  <text class="m" x="270" y="293" text-anchor="middle">data-platform-dev-events</text>
+  <text class="s" x="270" y="310" text-anchor="middle">2 shards · retención 24 h</text>
+  <text class="s" x="270" y="325" text-anchor="middle">SSE-KMS (aws/kinesis)</text>
+  <path class="a" d="M160,300 L188,300" marker-end="url(#fl)"/>
+
+  <!-- Firehose -> S3 -->
+  <rect class="b ing" x="400" y="28" width="170" height="56"/>
+  <text class="t" x="485" y="52" text-anchor="middle">Kinesis Firehose</text>
+  <text class="s" x="485" y="69" text-anchor="middle">Pre-entrega 2</text>
+  <rect class="b ing" x="620" y="28" width="200" height="56"/>
+  <text class="t" x="720" y="52" text-anchor="middle">S3 · ingesta/ (bronze)</text>
+  <text class="s" x="720" y="69" text-anchor="middle">JSON GZIP por fecha</text>
+  <path class="a" d="M350,268 C375,268 375,56 398,56" marker-end="url(#fl)"/>
+  <path class="a" d="M570,56 L618,56" marker-end="url(#fl)"/>
+
+  <!-- Flink -> Iceberg -> Glue -> Athena -->
+  <rect class="b lk" x="400" y="128" width="170" height="66"/>
+  <text class="t" x="485" y="152" text-anchor="middle">Managed Flink</text>
+  <text class="s" x="485" y="168" text-anchor="middle">ventanas 1 min + estado</text>
+  <text class="s" x="485" y="182" text-anchor="middle">Pre-entrega 4</text>
+  <rect class="b lk" x="620" y="120" width="200" height="82"/>
+  <text class="t" x="720" y="143" text-anchor="middle">S3 · lakehouse/ (Iceberg v2)</text>
+  <text class="m" x="720" y="160" text-anchor="middle">ventanas_clientes</text>
+  <text class="s" x="720" y="176" text-anchor="middle">Parquet + metadata.json</text>
+  <text class="s" x="720" y="191" text-anchor="middle">snapshot por checkpoint</text>
+  <rect class="b lk" x="860" y="120" width="200" height="82"/>
+  <text class="t" x="960" y="143" text-anchor="middle">Glue Data Catalog</text>
+  <text class="m" x="960" y="160" text-anchor="middle">lakehouse_db</text>
+  <text class="s" x="960" y="176" text-anchor="middle">table_type = ICEBERG</text>
+  <text class="s" x="960" y="191" text-anchor="middle">metadata_location</text>
+  <rect class="b lk" x="860" y="28" width="200" height="56"/>
+  <text class="t" x="960" y="52" text-anchor="middle">Amazon Athena</text>
+  <text class="s" x="960" y="69" text-anchor="middle">$snapshots · $history · $files</text>
+  <path class="a" d="M350,284 C380,284 380,161 398,161" marker-end="url(#fl)"/>
+  <path class="a" d="M570,161 L618,161" marker-end="url(#fl)"/>
+  <path class="a" d="M820,161 L858,161" marker-end="url(#fl)"/>
+  <path class="a" d="M960,120 L960,86" marker-end="url(#fl)"/>
+
+  <!-- Redshift -->
+  <rect x="380" y="235" width="712" height="240" rx="8" fill="#f7faff" stroke="#1f5fa8" stroke-width="2"/>
+  <text class="t" x="392" y="255" fill="#1f5fa8">Amazon Redshift Serverless · workgroup data-platform-dev-analytics (8 RPU, privado, Terraform)</text>
+
+  <rect class="b rs" x="400" y="285" width="155" height="62"/>
+  <text class="t" x="477" y="305" text-anchor="middle">kds</text>
+  <text class="s" x="477" y="320" text-anchor="middle">EXTERNAL SCHEMA</text>
+  <text class="s" x="477" y="334" text-anchor="middle">FROM KINESIS</text>
+
+  <rect class="b rs" x="570" y="285" width="155" height="62"/>
+  <text class="t" x="647" y="303" text-anchor="middle">BRONZE</text>
+  <text class="m" x="647" y="318" text-anchor="middle">mv_eventos_kinesis</text>
+  <text class="s" x="647" y="334" text-anchor="middle">CAN_JSON_PARSE → SUPER</text>
+
+  <rect class="b rs" x="740" y="285" width="155" height="62"/>
+  <text class="t" x="817" y="303" text-anchor="middle">SILVER</text>
+  <text class="m" x="817" y="318" text-anchor="middle">mv_eventos</text>
+  <text class="s" x="817" y="334" text-anchor="middle">tipos nativos + validación</text>
+
+  <rect class="b rs" x="910" y="278" width="162" height="76"/>
+  <text class="t" x="991" y="296" text-anchor="middle">GOLD</text>
+  <text class="m" x="991" y="311" text-anchor="middle">mv_ventas_por_minuto</text>
+  <text class="m" x="991" y="325" text-anchor="middle">mv_calidad_por_minuto</text>
+  <text class="s" x="991" y="341" text-anchor="middle">refresco incremental</text>
+
+  <rect class="b ops" x="400" y="390" width="155" height="62"/>
+  <text class="t" x="477" y="409" text-anchor="middle">monitoring</text>
+  <text class="m" x="477" y="424" text-anchor="middle">v_lag_ingesta</text>
+  <text class="s" x="477" y="439" text-anchor="middle">SYS_STREAM_SCAN_STATES</text>
+
+  <rect class="b ops" x="570" y="390" width="155" height="62"/>
+  <text class="t" x="647" y="409" text-anchor="middle">ops</text>
+  <text class="m" x="647" y="424" text-anchor="middle">sp_refrescar_stream()</text>
+  <text class="s" x="647" y="439" text-anchor="middle">REFRESH en cadena</text>
+
+  <rect class="b rs" x="740" y="385" width="155" height="72"/>
+  <text class="t" x="817" y="404" text-anchor="middle">JOIN caliente+histórico</text>
+  <text class="m" x="817" y="419" text-anchor="middle">v_clientes_stream_</text>
+  <text class="m" x="817" y="432" text-anchor="middle">vs_lakehouse</text>
+  <text class="s" x="817" y="447" text-anchor="middle">analytics</text>
+
+  <rect class="b lk" x="910" y="390" width="162" height="62"/>
+  <text class="t" x="991" y="409" text-anchor="middle">lakehouse</text>
+  <text class="s" x="991" y="424" text-anchor="middle">EXTERNAL SCHEMA</text>
+  <text class="s" x="991" y="439" text-anchor="middle">FROM DATA CATALOG</text>
+
+  <path class="aa" d="M350,316 L398,316" marker-end="url(#fla)"/>
+  <text class="lab" x="400" y="277">← Streaming Ingestion directa (sin S3)</text>
+  <path class="a" d="M555,316 L568,316" marker-end="url(#fl)"/>
+  <path class="a" d="M725,316 L738,316" marker-end="url(#fl)"/>
+  <path class="a" d="M895,316 L908,316" marker-end="url(#fl)"/>
+  <path class="a" d="M960,354 L870,385" marker-end="url(#fl)"/>
+  <path class="a" d="M910,421 L897,421" marker-end="url(#fl)"/>
+  <path class="a" d="M1060,170 L1098,170 L1098,421 L1074,421" marker-end="url(#fl)"/>
+  <path class="d" d="M647,390 L647,349" marker-end="url(#fl)"/>
+  <path class="d" d="M740,330 C700,370 560,360 535,390" marker-end="url(#fl)"/>
+
+  <!-- IAM -->
+  <rect class="b iam" x="190" y="370" width="170" height="104"/>
+  <text class="t" x="275" y="389" text-anchor="middle">IAM_ROLE default</text>
+  <text class="m" x="275" y="404" text-anchor="middle">redshift-service-role</text>
+  <text class="s" x="275" y="419" text-anchor="middle">kinesis:DescribeStream,</text>
+  <text class="s" x="275" y="432" text-anchor="middle">GetShardIterator, GetRecords</text>
+  <text class="s" x="275" y="445" text-anchor="middle">kms:Decrypt (vía Kinesis)</text>
+  <text class="s" x="275" y="458" text-anchor="middle">glue:Get* · s3:GetObject</text>
+  <path class="d" d="M360,420 L398,420" marker-end="url(#fl)"/>
+
+  <!-- Consumidores -->
+  <rect class="b iam" x="380" y="510" width="235" height="62"/>
+  <text class="t" x="497" y="530" text-anchor="middle">EventBridge Scheduler</text>
+  <text class="s" x="497" y="545" text-anchor="middle">rate(1 minute) → Data API</text>
+  <text class="s" x="497" y="559" text-anchor="middle">rol IAM refresh → stream_refresher</text>
+  <rect class="b iam" x="640" y="510" width="250" height="62"/>
+  <text class="t" x="765" y="530" text-anchor="middle">Analistas</text>
+  <text class="s" x="765" y="545" text-anchor="middle">rol IAM redshift-analyst (tag RedshiftDbRoles)</text>
+  <text class="s" x="765" y="559" text-anchor="middle">→ analytics_role · Data API / Query Editor v2</text>
+  <rect class="b ops" x="910" y="510" width="182" height="62"/>
+  <text class="t" x="1001" y="530" text-anchor="middle">CloudWatch</text>
+  <text class="s" x="1001" y="545" text-anchor="middle">dashboard: IteratorAge,</text>
+  <text class="s" x="1001" y="559" text-anchor="middle">registros, RPU de Redshift</text>
+  <path class="a" d="M497,510 L497,488 L630,488 L630,454" marker-end="url(#fl)"/>
+  <path class="a" d="M765,510 L765,490 L800,490 L800,459" marker-end="url(#fl)"/>
+</svg>
+<p class="meta">Líneas punteadas: el procedimiento de refresco actúa sobre la cadena bronze→silver→gold; monitoring lee silver y las vistas del sistema; el rol IAM autoriza a Redshift frente a Kinesis, KMS, Glue y S3.</p>
+
+<h3>Flujo</h3>
+<ul>
+  <li><b>Transporte:</b> el productor escribe JSON en Kinesis. El mismo stream alimenta tres consumidores independientes: Firehose (archivo bronze en S3), Managed Flink (lakehouse Iceberg) y Redshift (analítica in-stream).</li>
+  <li><b>Ingesta directa:</b> <code>kds</code> mapea los streams de la cuenta como tablas. La vista bronze lee de cada shard los registros posteriores al último <i>sequence number</i> que materializó y descifra los datos a través de Kinesis con el rol IAM.</li>
+  <li><b>Modelado:</b> silver convierte el SUPER a tipos nativos y marca los registros que no cumplen el contrato. Gold agrega por minuto; las consultas leen totales ya calculados.</li>
+  <li><b>Lakehouse:</b> <code>lakehouse</code> apunta a <code>lakehouse_db</code> del Glue Data Catalog. Redshift resuelve el último snapshot desde <code>metadata_location</code> y lee los Parquet que indican los manifests.</li>
+  <li><b>Operación:</b> EventBridge Scheduler invoca cada minuto <code>CALL ops.sp_refrescar_stream()</code> por la Data API. El dashboard de CloudWatch y las vistas de <code>monitoring</code> miden el lag.</li>
+</ul>
+
+<h2>3. Infraestructura como código (Terraform)</h2>
+<p>Módulo nuevo <code>infra/modules/redshift</code>, invocado desde <code>infra/environments/dev/main.tf</code>. Para cumplir el requisito de Redshift Serverless de subredes en 3 zonas de disponibilidad, la VPC pasó a 3 AZ (<code>az_count = 3</code>). El cambio sólo agregó una subred y su tabla de rutas.</p>
+<table class="doc">
+  <tr><th>Recurso</th><th>Configuración relevante</th></tr>
+  <tr><td><code>aws_redshiftserverless_namespace</code></td><td>Base <code>analytics</code>. Contraseña del admin generada y rotada por Redshift en Secrets Manager (<code>manage_admin_password</code>): no aparece en el código ni en el state. Rol por defecto = <code>redshift-service-role</code>. Exporta los logs de usuarios, conexiones y actividad.</td></tr>
+  <tr><td><code>aws_redshiftserverless_workgroup</code></td><td>8 RPU base, <code>publicly_accessible = false</code>, subredes privadas, <code>require_ssl = true</code> y <code>max_query_execution_time = 900</code></td></tr>
+  <tr><td><code>aws_security_group</code></td><td>Entrada 5439 sólo desde el CIDR de la VPC; salida sólo hacia la VPC</td></tr>
+  <tr><td><code>aws_redshiftserverless_usage_limit</code></td><td>Tope de 16 RPU-hora por día con <code>breach_action = deactivate</code> (control de costos)</td></tr>
+  <tr><td><code>aws_iam_role.redshift_service</code></td><td>Trust: <code>redshift.amazonaws.com</code> / <code>redshift-serverless.amazonaws.com</code> con <code>aws:SourceAccount</code>. Permisos: <code>kinesis:DescribeStream</code>, <code>DescribeStreamSummary</code>, <code>GetShardIterator</code>, <code>GetRecords</code> y <code>ListShards</code> sobre el ARN del stream; <code>kms:Decrypt</code> sólo <code>kms:ViaService = kinesis</code>; <code>glue:Get*</code> sobre <code>lakehouse_db</code>; <code>s3:GetObject</code> sobre <code>lakehouse/*</code>. Sólo lectura.</td></tr>
+  <tr><td><code>aws_iam_role.analyst</code></td><td>Tag <code>RedshiftDbRoles = analytics_role</code>. Sólo <code>redshift-serverless:GetCredentials</code> y <code>redshift-data:*Statement</code> sobre el workgroup; para ver resultados, condición <code>statement-owner-iam-userid = ${aws:userid}</code>.</td></tr>
+  <tr><td><code>aws_iam_role.refresh</code> + <code>aws_scheduler_schedule</code></td><td>EventBridge Scheduler, <code>rate(1 minute)</code>, destino <code>redshiftdata:executeStatement</code> sin secreto. Tag <code>RedshiftDbRoles = stream_refresher</code>. Se activa con <code>redshift_refresh_schedule_enabled</code>.</td></tr>
+  <tr><td><code>aws_cloudwatch_dashboard</code></td><td>IncomingRecords / GetRecords.Records, <code>GetRecords.IteratorAgeMilliseconds</code>, ComputeCapacity y ComputeSeconds de Redshift</td></tr>
+</table>
+<p><b>Red:</b> el workgroup no tiene endpoint público. Con <code>enhanced_vpc_routing = false</code>, Redshift llega a Kinesis, Glue y S3 por su red administrada, así que la VPC sin NAT no necesita endpoints de interfaz. Para operar se usa la Redshift Data API (HTTPS + IAM), que no requiere abrir puertos.</p>
+<h3>Recursos creados por <code>terraform apply</code></h3>
+{{TFAPPLY}}
+<p class="meta">La primera ejecución creó 16 de los 17 recursos y falló en la regla de salida del security group: la descripción tenía un acento ("sólo") y EC2 sólo admite ASCII. Se corrigió el texto y un segundo <code>apply</code> creó la regla (<i>1 added</i>; el <i>1 changed</i> es la deriva previa de <code>run_configuration</code> de Flink, que no arranca la aplicación). Salida completa: <code>docs/evidencias-redshift/terraform_apply.txt</code>.</p>
+
+<h2>4. Diseño de la capa SQL</h2>
+<table class="doc">
+  <tr><th>Objeto</th><th>Capa</th><th>Qué hace</th></tr>
+  <tr><td><code>kds."data-platform-dev-events"</code></td><td>Mapeo</td><td>Stream de Kinesis expuesto como tabla (<code>kinesis_data</code> VARBYTE + metadatos del registro)</td></tr>
+  <tr><td><code>stream.mv_eventos_kinesis</code></td><td>Bronze (streaming)</td><td>Valida el JSON con <code>CAN_JSON_PARSE</code>, lo guarda como SUPER con <code>JSON_PARSE</code> y conserva <code>approximate_arrival_timestamp</code>, <code>refresh_time</code>, shard y sequence number</td></tr>
+  <tr><td><code>stream.mv_eventos</code></td><td>Silver</td><td><code>event_id</code> BIGINT, <code>event_type</code> / <code>cliente_id</code> VARCHAR, <code>importe</code> DECIMAL(12,2), <code>event_ts</code> TIMESTAMP (UTC), <code>es_valido</code> y <code>motivo_invalido</code></td></tr>
+  <tr><td><code>analytics.mv_ventas_por_minuto</code></td><td>Gold</td><td>Operaciones, compras, importe y compra máxima por minuto y cliente</td></tr>
+  <tr><td><code>analytics.mv_calidad_por_minuto</code></td><td>Gold</td><td>Registros válidos y errores por motivo y por minuto: el "errores por minuto" del stream</td></tr>
+  <tr><td><code>analytics.v_clientes_stream_vs_lakehouse</code></td><td>Servicio</td><td>JOIN de los últimos 15 minutos del stream con el histórico Iceberg de cada cliente</td></tr>
+  <tr><td><code>monitoring.v_lag_ingesta</code>, <code>v_scans_stream</code>, <code>v_refrescos</code></td><td>Monitoreo</td><td>Lag por minuto, lectura por shard y tipo y duración de cada refresco</td></tr>
+  <tr><td><code>ops.sp_refrescar_stream()</code></td><td>Operación</td><td>Refresca la cadena en orden (<code>SECURITY DEFINER</code>)</td></tr>
+</table>
+
+<h3>Decisiones tomadas a partir de pruebas en el workgroup</h3>
+<ul>
+  <li><b>Validar antes de extraer (schema drift).</b> Si la vista de streaming fallara con un registro que no es JSON, se detendría toda la ingesta. Bronze sólo aplica <code>CAN_JSON_PARSE</code> y <code>JSON_PARSE</code>, que nunca fallan: el registro inválido queda con <code>is_valid_json = false</code>. Una vista de streaming tampoco admite alias de subconsulta ni navegar <code>JSON_PARSE(...).campo</code> (error de sintaxis), así que la extracción tipada está en silver.</li>
+  <li><b>Conversión "lax" desde SUPER, sin errores de casting.</b> <code>payload.importe::DECIMAL</code> con <code>"N/A"</code> devuelve NULL en lugar de abortar. Además, <code>JSON_TYPEOF</code> exige el tipo JSON correcto antes de convertir.</li>
+  <li><b>Funciones inmutables, para que el refresco sea incremental.</b> Convertir VARCHAR→TIMESTAMP, <code>TO_TIMESTAMP</code>, <code>EXTRACT(EPOCH)</code> o <code>DATE_TRUNC</code> sobre TIMESTAMPTZ son funciones "mutables" (dependen de la sesión) y obligan a recalcular la vista completa en cada refresco (<code>svv_mv_info.state = 0</code>). La conversión SUPER→TIMESTAMP sí es inmutable, pero conserva la hora de reloj e ignora el offset. Por eso el contrato exige timestamps en UTC (<code>+00:00</code>/<code>Z</code>) y cualquier otro offset se marca <code>timestamp_no_utc</code>, en vez de guardar una hora incorrecta. Resultado: las 4 vistas tienen <code>state = 1</code>.</li>
+  <li><b>Refresco orquestado, no AUTO REFRESH.</b> Redshift no admite AUTO REFRESH en vistas definidas sobre otras vistas materializadas. Además, sobre un stream no permite fijar la cadencia y en Serverless mantendría el cómputo activo de forma continua. El procedimiento hace <code>COMMIT</code> entre capas: dentro de una misma transacción, silver veía a bronze como "no actualizada" y no incorporaba las filas nuevas.</li>
+  <li><b>Pre-agregar antes del JOIN.</b> Un cliente tiene muchos minutos en el stream y muchas ventanas en Iceberg. Unir esas filas sin agregar multiplica las sumas, así que cada lado se agrega primero.</li>
+</ul>
+
+<h2>5. Código SQL: Streaming Ingestion y vistas materializadas</h2>
+<p>Archivo <code>sql/redshift_streaming.sql</code>, que consolida todo el SQL. Se ejecuta con <code>python scripts/redshift_sql.py --secret-arn &lt;arn&gt; --file sql/redshift_streaming.sql</code>, que usa la Redshift Data API y separa el archivo por secciones.</p>
+{{SQL}}
+
+<h2 class="salto">6. Evidencia de ejecución</h2>
+<p>Corrida del 10/11/2026 (horas en UTC). Tráfico de prueba: <code>kinesis_producer.py</code> con 8–30 % de eventos con <i>schema drift</i> (JSON roto, campo faltante, importe de texto, timestamp con otro formato, campo nuevo). Los resultados son la salida real de <code>sql/redshift_streaming.sql</code>, secciones <code>validacion</code> y <code>validacion-analista</code>, ejecutadas por la Data API. Las capturas de consola están en §6.8.</p>
+
+<h3>6.1 Datos fluyendo de Kinesis a Redshift</h3>
+<p>Última tanda del productor (12 lotes de 20 eventos cada 10 s):</p>
+{{FILE:docs/evidencias-redshift/productor.txt}}
+<p>Bronze: registros por shard y validez del JSON (incluye las tandas anteriores):</p>
+{{V:2}}
+<p>Silver: campos JSON convertidos a tipos nativos, sin errores de casting:</p>
+{{V:3}}
+{{V:4}}
+
+<h3>6.2 Schema drift controlado</h3>
+<p>Los registros que no cumplen el contrato no detienen la ingesta: se conservan con su payload original y se clasifican. El evento con un campo nuevo (<code>canal</code>) es válido, porque se ignora el campo adicional.</p>
+{{V:5}}
+{{V:7}}
+
+<h3>6.3 Métricas de tiempo real (gold)</h3>
+{{V:6}}
+
+<h3>6.4 Integración Lakehouse: stream e Iceberg en la misma sesión SQL</h3>
+<p>Ritmo de compras de los últimos 15 minutos (stream) frente al promedio histórico por ventana (Iceberg). Los clientes impares sólo generan eventos <code>consulta</code>, por eso no tienen compras.</p>
+{{V:8}}
+<p>JOIN ad hoc entre la última hora del stream y el estado acumulado que Flink persistió en Iceberg:</p>
+{{V:9}}
+
+<h3>6.5 Metadatos de Iceberg</h3>
+<p>Desde Redshift: tabla externa, esquema y forma en que el motor la leyó (formato Iceberg, archivos resueltos desde los manifests).</p>
+{{V:10}}
+{{V:11}}
+{{V:12}}
+<p>Desde Athena y Glue: historial de snapshots (uno por checkpoint de Flink), particiones, archivos y puntero <code>metadata_location</code>.</p>
+{{ICE:1}}
+{{ICE:2}}
+{{ICE:3}}
+{{ICE:4}}
+{{ICE:5}}
+{{ICE:6}}
+
+<h3>6.6 Seguridad: acceso restringido al rol de analítica</h3>
+<p>Sesión abierta asumiendo el rol IAM <code>data-platform-dev-redshift-analyst</code>, con credenciales temporales y sin contraseña de base de datos. Redshift crea el usuario <code>IAMR:&lt;rol&gt;</code> y le otorga <code>analytics_role</code> a partir del tag. Puede leer analytics, el lakehouse y el JOIN; el dato crudo (<code>stream</code>) y el stream (<code>kds</code>) le devuelven <i>permission denied</i>.</p>
+{{A:1}}
+{{A:2}}
+{{A:4}}
+{{A:5}}
+{{A:6}}
+{{A:7}}
+<p>Refresco programado: lo ejecuta el usuario IAMR del rol del scheduler, cada 60 s, sin secreto.</p>
+{{V:18}}
+
+<h3>6.7 Monitoreo: lag de ingesta y refrescos</h3>
+<p><code>lag_kinesis_a_redshift</code> mide el tiempo desde que Kinesis aceptó el registro hasta que un REFRESH lo materializó. Con la cadencia de 60 s, el promedio está entre 20 y 30 s y el máximo cerca de 60 s, lo esperado. El valor de 593 s del minuto 16:16 corresponde a datos enviados antes de crear la vista. Los valores negativos de <code>lag_evento_a_kinesis</code> son diferencias de reloj de 1–3 s entre la PC del productor y AWS.</p>
+{{V:13}}
+{{V:14}}
+{{V:15}}
+{{V:16}}
+{{V:17}}
+
+<h3>6.8 Capturas de consola</h3>
+{{IMG:consola-redshift-mv-stream.png|Query Editor v2: SELECT sobre stream.mv_eventos con datos recién llegados de Kinesis}}
+{{IMG:consola-redshift-join-iceberg.png|Query Editor v2: JOIN analytics.v_clientes_stream_vs_lakehouse (stream + Iceberg)}}
+{{IMG:consola-redshift-workgroup.png|Redshift Serverless: workgroup privado y rol IAM asociado al namespace}}
+{{IMG:consola-athena-snapshots.png|Athena: metadatos Iceberg ventanas_clientes$snapshots}}
+{{IMG:consola-glue-iceberg.png|Glue Data Catalog: tabla Iceberg ventanas_clientes}}
+{{IMG:consola-cloudwatch-dashboard.png|CloudWatch: dashboard data-platform-dev-streaming-analytics}}
+
+<h2>7. Estrategia de refresco y costos (latency trade-off)</h2>
+<table class="doc">
+  <tr><th>Alternativa</th><th>Latencia</th><th>Efecto</th><th>Decisión</th></tr>
+  <tr><td>Refresco cada 1 s</td><td>~1 s</td><td>Un REFRESH de la cadena tarda 3–4,5 s, así que se solaparían y saturarían el workgroup. Además, una métrica por minuto no gana precisión.</td><td>Descartada</td></tr>
+  <tr><td>AUTO REFRESH YES</td><td>Variable</td><td>Redshift no lo admite en vistas anidadas; sobre el stream no permite fijar la cadencia y en Serverless deja el cómputo activo todo el tiempo</td><td>Descartada</td></tr>
+  <tr><td><b>Scheduler cada 60 s + REFRESH incremental</b></td><td>20–30 s promedio, ≤ 60 s máximo</td><td>Cada ciclo procesa sólo lo nuevo, tarda 3–4,5 s y respeta la granularidad por minuto de las métricas</td><td><b>Elegida</b></td></tr>
+  <tr><td>Manual / bajo demanda</td><td>La de la consulta</td><td>Sin costo en reposo; adecuada para entornos de desarrollo</td><td>Fuera de las pruebas</td></tr>
+</table>
+<p><b>Costos:</b> Redshift Serverless cobra por RPU-segundo sólo mientras hay consultas, con 8 RPU ≈ US$ 3/h activo. Con el refresco cada minuto el workgroup queda activo casi todo el tiempo, por eso el scheduler está apagado por defecto (<code>redshift_refresh_schedule_enabled = false</code>). Además, el <i>usage limit</i> lo desactiva al superar 16 RPU-hora por día. Si el refresco está apagado más de 24 h (la retención del stream), los registros más viejos se pierden para Redshift. El histórico sigue disponible en S3 (Firehose) e Iceberg (Flink).</p>
+
+<h2>8. Cómo reproducir</h2>
+<pre>cd infra/environments/dev
+terraform init
+terraform apply                     # módulo redshift (+ subred en la 3.ª AZ)
+SECRET=$(terraform output -raw redshift_admin_secret_arn)
+ANALYST=$(terraform output -raw redshift_analyst_role_arn)
+cd ../../..
+
+# 1. Esquemas externos, vistas materializadas, roles y permisos (una vez)
+python scripts/redshift_sql.py --secret-arn $SECRET --file sql/redshift_streaming.sql
+
+# 2. Refresco cada minuto: redshift_refresh_schedule_enabled = true en terraform.tfvars y terraform apply
+
+# 3. Tráfico de prueba con schema drift
+python scripts/kinesis_producer.py --lotes 12 --registros 20 --pausa 10 --max-retraso 5 --anomalias 8
+
+# 4. Validación (administrador) y permisos (rol de analistas)
+python scripts/redshift_sql.py --secret-arn $SECRET --file sql/redshift_streaming.sql --seccion validacion
+python scripts/redshift_sql.py --profile terraform-dev --role-arn $ANALYST \
+       --file sql/redshift_streaming.sql --seccion validacion-analista --continue-on-error
+
+# 5. Este documento
+python scripts/generar_informe_pdf.py</pre>
+
+</body>
+</html>

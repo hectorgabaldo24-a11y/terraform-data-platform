@@ -1,0 +1,265 @@
+
+Warning: Deprecated Parameter
+
+The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
+instead.
+Acquiring state lock. This may take a few moments...
+module.redshift.aws_iam_role.redshift_service: Creating...
+module.redshift.aws_security_group.redshift: Creating...
+module.network.aws_subnet.private["us-east-1c"]: Creating...
+module.redshift.aws_iam_role.refresh: Creating...
+module.redshift.aws_iam_role.analyst: Creating...
+module.lakehouse.aws_glue_catalog_database.lakehouse_db: Modifying... [id=659500704179:lakehouse_db]
+module.redshift.aws_iam_role.analyst: Creation complete after 1s [id=data-platform-dev-redshift-analyst]
+module.lakehouse.aws_glue_catalog_database.lakehouse_db: Modifications complete after 1s [id=659500704179:lakehouse_db]
+module.flink.data.aws_iam_policy_document.flink_access: Reading...
+module.flink.data.aws_iam_policy_document.flink_access: Read complete after 0s [id=2709891021]
+module.flink.aws_kinesisanalyticsv2_application.flink: Modifying... [id=arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink]
+module.redshift.aws_iam_role.redshift_service: Creation complete after 1s [id=data-platform-dev-redshift-service-role]
+module.redshift.aws_redshiftserverless_namespace.this: Creating...
+module.redshift.aws_iam_role_policy.redshift_service: Creating...
+module.redshift.aws_iam_role.refresh: Creation complete after 1s [id=data-platform-dev-redshift-refresh]
+module.network.aws_subnet.private["us-east-1c"]: Creation complete after 2s [id=subnet-09245528c61711d29]
+module.network.aws_route_table.private["us-east-1c"]: Creating...
+module.redshift.aws_iam_role_policy.redshift_service: Creation complete after 1s [id=data-platform-dev-redshift-service-role:data-platform-dev-redshift-streaming-lakehouse]
+module.flink.aws_kinesisanalyticsv2_application.flink: Modifications complete after 1s [id=arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink]
+module.network.aws_route_table.private["us-east-1c"]: Creation complete after 1s [id=rtb-07fb8ae63f9943115]
+module.network.aws_route_table_association.private["us-east-1c"]: Creating...
+module.network.aws_vpc_endpoint.s3: Modifying... [id=vpce-02aba676cabeef46b]
+module.redshift.aws_redshiftserverless_namespace.this: Creation complete after 2s [id=data-platform-dev-analytics]
+module.redshift.aws_security_group.redshift: Creation complete after 4s [id=sg-066cc52dd678acb84]
+module.redshift.aws_redshiftserverless_workgroup.this: Creating...
+module.redshift.aws_vpc_security_group_egress_rule.redshift_to_vpc: Creating...
+module.redshift.aws_vpc_security_group_ingress_rule.redshift_from_vpc: Creating...
+module.network.aws_route_table_association.private["us-east-1c"]: Creation complete after 1s [id=rtbassoc-01766a9c714fce103]
+module.redshift.aws_vpc_security_group_ingress_rule.redshift_from_vpc: Creation complete after 0s [id=sgr-0b8ed264d9f101d4e]
+module.network.aws_vpc_endpoint.s3: Modifications complete after 8s [id=vpce-02aba676cabeef46b]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [00m10s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [00m20s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [00m30s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [00m40s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [00m50s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Still creating... [01m00s elapsed]
+module.redshift.aws_redshiftserverless_workgroup.this: Creation complete after 1m9s [id=data-platform-dev-analytics]
+module.redshift.data.aws_iam_policy_document.refresh: Reading...
+module.redshift.data.aws_iam_policy_document.analyst: Reading...
+module.redshift.aws_redshiftserverless_usage_limit.daily_compute: Creating...
+module.redshift.aws_cloudwatch_dashboard.streaming_analytics: Creating...
+module.redshift.data.aws_iam_policy_document.refresh: Read complete after 0s [id=4067572963]
+module.redshift.data.aws_iam_policy_document.analyst: Read complete after 0s [id=2043193084]
+module.redshift.aws_scheduler_schedule.refresh_stream_mv: Creating...
+module.redshift.aws_iam_role_policy.refresh: Creating...
+module.redshift.aws_iam_role_policy.analyst: Creating...
+module.redshift.aws_redshiftserverless_usage_limit.daily_compute: Creation complete after 1s [id=4c261180-a442-4508-80fe-a7535964dab4]
+module.redshift.aws_scheduler_schedule.refresh_stream_mv: Creation complete after 1s [id=default/data-platform-dev-redshift-refresh-stream]
+module.redshift.aws_cloudwatch_dashboard.streaming_analytics: Creation complete after 1s [id=data-platform-dev-streaming-analytics]
+module.redshift.aws_iam_role_policy.analyst: Creation complete after 1s [id=data-platform-dev-redshift-analyst:data-platform-dev-redshift-analyst-access]
+module.redshift.aws_iam_role_policy.refresh: Creation complete after 1s [id=data-platform-dev-redshift-refresh:data-platform-dev-redshift-refresh]
+
+Error: creating VPC Security Group Rule
+
+  with module.redshift.aws_vpc_security_group_egress_rule.redshift_to_vpc,
+  on ..\..\modules\redshift\main.tf line 37, in resource "aws_vpc_security_group_egress_rule" "redshift_to_vpc":
+  37: resource "aws_vpc_security_group_egress_rule" "redshift_to_vpc" {
+
+operation error EC2: AuthorizeSecurityGroupEgress, https response error
+StatusCode: 400, RequestID: 0657e04b-5c2c-46a0-b107-7e2afefbf782, api error
+InvalidParameterValue: Invalid rule description. Valid descriptions are
+strings less than 256 characters from the following set:  a-zA-Z0-9.
+_-:/()#,@[]+=&;{}!$*
+
+Warning: Deprecated Parameter
+
+The parameter "dynamodb_table" is deprecated. Use parameter "use_lockfile"
+instead.
+Acquiring state lock. This may take a few moments...
+module.redshift.data.aws_kms_alias.kinesis: Reading...
+module.identity.data.aws_caller_identity.current: Reading...
+module.network.data.aws_region.current: Reading...
+data.aws_caller_identity.current: Reading...
+module.redshift.data.aws_region.current: Reading...
+module.redshift.data.aws_caller_identity.current: Reading...
+module.identity.aws_iam_service_linked_role.this["lakeformation.amazonaws.com"]: Refreshing state... [id=arn:aws:iam::659500704179:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess]
+module.kinesis.aws_cloudwatch_log_group.firehose: Refreshing state... [id=/aws/kinesisfirehose/data-platform-dev-bronze]
+module.kinesis.aws_kinesis_stream.events: Refreshing state... [id=arn:aws:kinesis:us-east-1:659500704179:stream/data-platform-dev-events]
+module.kinesis.aws_iam_role.firehose: Refreshing state... [id=data-platform-dev-bronze-role]
+module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.redshift.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.network.data.aws_availability_zones.available: Reading...
+module.network.aws_vpc.this: Refreshing state... [id=vpc-0af4a4e28eb6cda86]
+module.redshift.data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
+module.redshift.data.aws_iam_policy_document.scheduler_assume: Reading...
+module.redshift.data.aws_iam_policy_document.scheduler_assume: Read complete after 0s [id=2544633532]
+module.redshift.data.aws_iam_policy_document.redshift_assume: Reading...
+module.redshift.data.aws_iam_policy_document.redshift_assume: Read complete after 0s [id=2569413387]
+module.redshift.data.aws_iam_policy_document.analyst_assume: Reading...
+module.redshift.data.aws_iam_policy_document.analyst_assume: Read complete after 0s [id=4109896794]
+module.redshift.aws_iam_role.refresh: Refreshing state... [id=data-platform-dev-redshift-refresh]
+module.identity.data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
+module.redshift.aws_iam_role.redshift_service: Refreshing state... [id=data-platform-dev-redshift-service-role]
+data.aws_caller_identity.current: Read complete after 1s [id=659500704179]
+module.redshift.aws_iam_role.analyst: Refreshing state... [id=data-platform-dev-redshift-analyst]
+module.identity.data.aws_iam_policy_document.processing_assume: Reading...
+module.identity.data.aws_iam_policy_document.processing_assume: Read complete after 0s [id=1449445080]
+module.identity.data.aws_iam_policy_document.audit_assume: Reading...
+module.identity.data.aws_iam_policy_document.audit_assume: Read complete after 0s [id=2797766587]
+module.identity.aws_iam_role.processing: Refreshing state... [id=data-platform-dev-processing-role]
+module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+aws_s3_bucket.data_platform: Refreshing state... [id=data-platform-dev-659500704179-bucket]
+module.redshift.data.aws_kms_alias.kinesis: Read complete after 2s [id=arn:aws:kms:us-east-1:659500704179:alias/aws/kinesis]
+module.identity.aws_iam_role.audit: Refreshing state... [id=data-platform-dev-audit-readonly-role]
+module.kinesis.aws_cloudwatch_log_stream.firehose: Refreshing state... [id=S3Delivery]
+module.kinesis.aws_cloudwatch_metric_alarm.write_throttle: Refreshing state... [id=data-platform-dev-events-write-throttle]
+module.kinesis.aws_cloudwatch_metric_alarm.read_throttle: Refreshing state... [id=data-platform-dev-events-read-throttle]
+module.identity.data.aws_iam_policy_document.processing_kinesis[0]: Reading...
+module.identity.data.aws_iam_policy_document.processing_kinesis[0]: Read complete after 0s [id=3823637154]
+module.redshift.aws_redshiftserverless_namespace.this: Refreshing state... [id=data-platform-dev-analytics]
+module.identity.aws_iam_role_policy_attachment.audit_readonly: Refreshing state... [id=data-platform-dev-audit-readonly-role/arn:aws:iam::aws:policy/SecurityAudit]
+module.identity.aws_iam_role_policy.processing_kinesis[0]: Refreshing state... [id=data-platform-dev-processing-role:data-platform-dev-processing-kinesis-read]
+module.network.aws_default_security_group.this: Refreshing state... [id=sg-07ea3c5e064e49d6c]
+module.redshift.aws_security_group.redshift: Refreshing state... [id=sg-066cc52dd678acb84]
+module.network.aws_subnet.private["us-east-1a"]: Refreshing state... [id=subnet-0e73636150cae7d00]
+module.network.aws_subnet.private["us-east-1b"]: Refreshing state... [id=subnet-040fe73fae45d2707]
+module.network.aws_subnet.private["us-east-1c"]: Refreshing state... [id=subnet-09245528c61711d29]
+module.redshift.aws_vpc_security_group_ingress_rule.redshift_from_vpc: Refreshing state... [id=sgr-0b8ed264d9f101d4e]
+module.network.aws_route_table.private["us-east-1b"]: Refreshing state... [id=rtb-0b7ce26640390ef29]
+module.network.aws_route_table.private["us-east-1c"]: Refreshing state... [id=rtb-07fb8ae63f9943115]
+module.network.aws_route_table.private["us-east-1a"]: Refreshing state... [id=rtb-0297597b322c7e61b]
+module.network.aws_route_table_association.private["us-east-1a"]: Refreshing state... [id=rtbassoc-04b5327c368ee5c55]
+module.network.aws_route_table_association.private["us-east-1b"]: Refreshing state... [id=rtbassoc-07132fc9c85b711b1]
+module.network.aws_route_table_association.private["us-east-1c"]: Refreshing state... [id=rtbassoc-01766a9c714fce103]
+module.redshift.aws_redshiftserverless_workgroup.this: Refreshing state... [id=data-platform-dev-analytics]
+module.redshift.data.aws_iam_policy_document.refresh: Reading...
+module.redshift.aws_redshiftserverless_usage_limit.daily_compute: Refreshing state... [id=4c261180-a442-4508-80fe-a7535964dab4]
+module.redshift.aws_cloudwatch_dashboard.streaming_analytics: Refreshing state... [id=data-platform-dev-streaming-analytics]
+module.redshift.aws_scheduler_schedule.refresh_stream_mv: Refreshing state... [id=default/data-platform-dev-redshift-refresh-stream]
+module.redshift.data.aws_iam_policy_document.analyst: Reading...
+module.redshift.data.aws_iam_policy_document.refresh: Read complete after 0s [id=4067572963]
+module.redshift.aws_iam_role_policy.refresh: Refreshing state... [id=data-platform-dev-redshift-refresh:data-platform-dev-redshift-refresh]
+module.redshift.data.aws_iam_policy_document.analyst: Read complete after 0s [id=2043193084]
+module.redshift.aws_iam_role_policy.analyst: Refreshing state... [id=data-platform-dev-redshift-analyst:data-platform-dev-redshift-analyst-access]
+aws_s3_bucket_public_access_block.data_platform: Refreshing state... [id=data-platform-dev-659500704179-bucket]
+aws_s3_bucket_versioning.data_platform: Refreshing state... [id=data-platform-dev-659500704179-bucket]
+module.kinesis.aws_iam_role_policy.firehose: Refreshing state... [id=data-platform-dev-bronze-role:data-platform-dev-bronze-policy]
+aws_s3_bucket_server_side_encryption_configuration.data_platform: Refreshing state... [id=data-platform-dev-659500704179-bucket]
+module.network.data.aws_iam_policy_document.s3_endpoint[0]: Reading...
+data.aws_iam_policy_document.data_platform_tls: Reading...
+module.identity.data.aws_iam_policy_document.processing_s3: Reading...
+data.aws_iam_policy_document.data_platform_tls: Read complete after 0s [id=3468914165]
+module.network.data.aws_iam_policy_document.s3_endpoint[0]: Read complete after 0s [id=2470331080]
+module.identity.data.aws_iam_policy_document.processing_s3: Read complete after 0s [id=2703625031]
+module.network.aws_vpc_endpoint.s3: Refreshing state... [id=vpce-02aba676cabeef46b]
+module.identity.aws_iam_policy.processing_s3: Refreshing state... [id=arn:aws:iam::659500704179:policy/data-platform-dev-processing-s3]
+aws_s3_bucket_policy.data_platform_tls: Refreshing state... [id=data-platform-dev-659500704179-bucket]
+module.kinesis.aws_kinesis_firehose_delivery_stream.bronze: Refreshing state... [id=arn:aws:firehose:us-east-1:659500704179:deliverystream/data-platform-dev-bronze]
+module.identity.aws_iam_role_policy_attachment.processing_s3: Refreshing state... [id=data-platform-dev-processing-role/arn:aws:iam::659500704179:policy/data-platform-dev-processing-s3]
+module.lakehouse.data.aws_region.current: Reading...
+module.lakehouse.data.aws_caller_identity.current: Reading...
+module.lakehouse.aws_athena_workgroup.lakehouse: Refreshing state... [id=data-platform-dev-lakehouse]
+module.lakehouse.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.lakehouse.aws_glue_catalog_database.lakehouse_db: Refreshing state... [id=659500704179:lakehouse_db]
+module.lakehouse.data.aws_caller_identity.current: Read complete after 0s [id=659500704179]
+module.lakehouse.data.aws_iam_policy_document.lakehouse_writer: Reading...
+module.lakehouse.data.aws_iam_policy_document.lakehouse_writer: Read complete after 0s [id=4036525047]
+module.lakehouse.aws_iam_policy.lakehouse_writer: Refreshing state... [id=arn:aws:iam::659500704179:policy/data-platform-dev-lakehouse-writer]
+module.lakehouse.aws_iam_role_policy_attachment.lakehouse_writer: Refreshing state... [id=data-platform-dev-processing-role/arn:aws:iam::659500704179:policy/data-platform-dev-lakehouse-writer]
+module.redshift.data.aws_iam_policy_document.redshift_service: Reading...
+module.redshift.data.aws_iam_policy_document.redshift_service: Read complete after 0s [id=1072005771]
+module.redshift.aws_iam_role_policy.redshift_service: Refreshing state... [id=data-platform-dev-redshift-service-role:data-platform-dev-redshift-streaming-lakehouse]
+module.lakehouse.aws_glue_catalog_table.ventanas_clientes: Refreshing state... [id=659500704179:lakehouse_db:ventanas_clientes]
+module.flink.aws_cloudwatch_log_group.flink: Refreshing state... [id=/aws/kinesis-analytics/data-platform-dev-flink]
+module.flink.aws_s3_object.flink_application: Refreshing state... [id=data-platform-dev-659500704179-bucket/flink/app/flink-app.zip]
+module.flink.aws_cloudwatch_log_stream.flink: Refreshing state... [id=application]
+module.flink.data.aws_iam_policy_document.flink_access: Reading...
+module.flink.data.aws_iam_policy_document.flink_access: Read complete after 0s [id=2709891021]
+module.flink.aws_iam_policy.flink_access: Refreshing state... [id=arn:aws:iam::659500704179:policy/data-platform-dev-flink-access]
+module.flink.aws_iam_role_policy_attachment.flink_access: Refreshing state... [id=data-platform-dev-processing-role/arn:aws:iam::659500704179:policy/data-platform-dev-flink-access]
+module.flink.aws_kinesisanalyticsv2_application.flink: Refreshing state... [id=arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # module.flink.aws_kinesisanalyticsv2_application.flink will be updated in-place
+  ~ resource "aws_kinesisanalyticsv2_application" "flink" {
+        id                     = "arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink"
+        name                   = "data-platform-dev-flink"
+        tags                   = {
+            "Environment" = "dev"
+            "ManagedBy"   = "Terraform"
+            "Project"     = "data-platform"
+        }
+        # (12 unchanged attributes hidden)
+
+      ~ application_configuration {
+          + run_configuration {
+              + application_restore_configuration {
+                  + application_restore_type = "RESTORE_FROM_LATEST_SNAPSHOT"
+                }
+              + flink_run_configuration {
+                  + allow_non_restored_state = false
+                }
+            }
+
+            # (5 unchanged blocks hidden)
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+  # module.redshift.aws_vpc_security_group_egress_rule.redshift_to_vpc will be created
+  + resource "aws_vpc_security_group_egress_rule" "redshift_to_vpc" {
+      + arn                    = (known after apply)
+      + cidr_ipv4              = "10.0.0.0/16"
+      + description            = "Salida solo dentro de la VPC"
+      + id                     = (known after apply)
+      + ip_protocol            = "-1"
+      + region                 = "us-east-1"
+      + security_group_id      = "sg-066cc52dd678acb84"
+      + security_group_rule_id = (known after apply)
+      + tags_all               = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "data-platform"
+        }
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.
+module.redshift.aws_vpc_security_group_egress_rule.redshift_to_vpc: Creating...
+module.flink.aws_kinesisanalyticsv2_application.flink: Modifying... [id=arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink]
+module.redshift.aws_vpc_security_group_egress_rule.redshift_to_vpc: Creation complete after 1s [id=sgr-0fcdc872298fd65a1]
+module.flink.aws_kinesisanalyticsv2_application.flink: Modifications complete after 1s [id=arn:aws:kinesisanalytics:us-east-1:659500704179:application/data-platform-dev-flink]
+
+Apply complete! Resources: 1 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+athena_workgroup = "data-platform-dev-lakehouse"
+audit_role_arn = "arn:aws:iam::659500704179:role/data-platform-dev-audit-readonly-role"
+data_bucket_name = "data-platform-dev-659500704179-bucket"
+flink_application_name = "data-platform-dev-flink"
+flink_application_status = "READY"
+flink_log_group_name = "/aws/kinesis-analytics/data-platform-dev-flink"
+kinesis_stream_name = "data-platform-dev-events"
+lakehouse_database = "lakehouse_db"
+lakehouse_table = "ventanas_clientes"
+lakehouse_table_location = "s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes"
+private_subnet_ids = [
+  "subnet-0e73636150cae7d00",
+  "subnet-040fe73fae45d2707",
+  "subnet-09245528c61711d29",
+]
+processing_role_arn = "arn:aws:iam::659500704179:role/data-platform-dev-processing-role"
+redshift_admin_secret_arn = "arn:aws:secretsmanager:us-east-1:659500704179:secret:redshift!data-platform-dev-analytics-rsadmin-jQx8nD"
+redshift_analyst_role_arn = "arn:aws:iam::659500704179:role/data-platform-dev-redshift-analyst"
+redshift_dashboard = "data-platform-dev-streaming-analytics"
+redshift_database = "analytics"
+redshift_service_role_arn = "arn:aws:iam::659500704179:role/data-platform-dev-redshift-service-role"
+redshift_workgroup = "data-platform-dev-analytics"
+service_linked_role_arns = {
+  "lakeformation.amazonaws.com" = "arn:aws:iam::659500704179:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
+}
+vpc_id = "vpc-0af4a4e28eb6cda86"

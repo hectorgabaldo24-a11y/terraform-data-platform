@@ -1,0 +1,16 @@
+Lote 1/12: 20 eventos enviados
+Lote 2/12: 20 eventos enviados
+Lote 3/12: 20 eventos enviados
+Lote 4/12: 20 eventos enviados
+Lote 5/12: 20 eventos enviados
+Lote 6/12: 20 eventos enviados
+Lote 7/12: 20 eventos enviados
+Lote 8/12: 20 eventos enviados
+Lote 9/12: 20 eventos enviados
+Lote 10/12: 20 eventos enviados
+Lote 11/12: 20 eventos enviados
+Lote 12/12: 20 eventos enviados
+Proceso terminado. Registros enviados: 240
+Stream: data-platform-dev-events
+Claves de partición: 10 clientes diferentes
+Eventos con schema drift: 14 {'json_roto': 2, 'sin_cliente': 3, 'importe_texto': 3, 'campo_nuevo': 4, 'timestamp_invalido': 2}

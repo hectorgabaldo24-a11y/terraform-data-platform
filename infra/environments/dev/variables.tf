@@ -65,3 +65,21 @@ variable "flink_allow_non_restored_state" {
   type        = bool
   default     = false
 }
+
+variable "redshift_base_capacity" {
+  description = "RPUs base del workgroup de Redshift Serverless"
+  type        = number
+  default     = 8
+}
+
+variable "redshift_max_rpu_hours_per_day" {
+  description = "Tope diario de RPU-horas de Redshift Serverless (al superarlo se desactiva el workgroup)"
+  type        = number
+  default     = 16
+}
+
+variable "redshift_refresh_schedule_enabled" {
+  description = "true activa el refresco cada minuto de la vista materializada del stream (costo por RPU mientras esté activo)"
+  type        = bool
+  default     = false
+}

@@ -67,3 +67,33 @@ output "flink_log_group_name" {
   description = "Grupo de logs de CloudWatch de la aplicación Flink"
   value       = module.flink.log_group_name
 }
+
+output "redshift_workgroup" {
+  description = "Workgroup de Redshift Serverless"
+  value       = module.redshift.workgroup_name
+}
+
+output "redshift_database" {
+  description = "Base de datos de Redshift"
+  value       = module.redshift.database_name
+}
+
+output "redshift_admin_secret_arn" {
+  description = "Secreto con la contraseña del administrador de Redshift (administrado por Redshift)"
+  value       = module.redshift.admin_secret_arn
+}
+
+output "redshift_service_role_arn" {
+  description = "Rol IAM de Redshift para Kinesis y el lakehouse"
+  value       = module.redshift.service_role_arn
+}
+
+output "redshift_analyst_role_arn" {
+  description = "Rol IAM de analistas de Redshift"
+  value       = module.redshift.analyst_role_arn
+}
+
+output "redshift_dashboard" {
+  description = "Dashboard de CloudWatch de la capa streaming-analítica"
+  value       = module.redshift.dashboard_name
+}

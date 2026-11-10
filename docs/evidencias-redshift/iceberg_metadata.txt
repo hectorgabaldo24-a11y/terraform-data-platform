@@ -1,0 +1,52 @@
+== Athena: SELECT committed_at, snapshot_id, parent_id, operation, summary['added-records'] AS added_records, summary['total-records'] AS total_records FROM "ventanas_clientes$snapshots" ORDER BY committed_at
+committed_at | snapshot_id | parent_id | operation | added_records | total_records
+2026-11-01 22:11:25.639 UTC | 3077757530987269976 | NULL | append | 19 | 19
+2026-11-01 22:12:23.628 UTC | 4210774569761478939 | 3077757530987269976 | append | 10 | 29
+2026-11-01 22:13:23.598 UTC | 6388884917182056901 | 4210774569761478939 | append | 10 | 39
+2026-11-01 22:14:23.782 UTC | 3876041861386617884 | 6388884917182056901 | append | 10 | 49
+2026-11-01 22:15:23.592 UTC | 500829894777509235 | 3876041861386617884 | append | 10 | 59
+
+== Athena: SELECT made_current_at, snapshot_id, is_current_ancestor FROM "ventanas_clientes$history" ORDER BY made_current_at
+made_current_at | snapshot_id | is_current_ancestor
+2026-11-01 22:11:25.639 UTC | 3077757530987269976 | true
+2026-11-01 22:12:23.628 UTC | 4210774569761478939 | true
+2026-11-01 22:13:23.598 UTC | 6388884917182056901 | true
+2026-11-01 22:14:23.782 UTC | 3876041861386617884 | true
+2026-11-01 22:15:23.592 UTC | 500829894777509235 | true
+
+== Athena: SELECT partition, record_count, file_count, total_size FROM "ventanas_clientes$partitions"
+partition | record_count | file_count | total_size
+{window_start_day=2026-11-01} | 59 | 10 | 39574
+
+== Athena: SELECT file_path, record_count, file_size_in_bytes FROM "ventanas_clientes$files" LIMIT 5
+file_path | record_count | file_size_in_bytes
+s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/data/window_start_day=2026-11-01/00000-0-9d6449e4-cd2a-4a52-a747-40bd2e35a98e-00004.parquet | 8 | 4016
+s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/data/window_start_day=2026-11-01/00001-0-232ae620-b24a-47cb-a5b6-e6df7630629e-00004.parquet | 2 | 3724
+s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/data/window_start_day=2026-11-01/00000-0-9d6449e4-cd2a-4a52-a747-40bd2e35a98e-00002.parquet | 8 | 4162
+s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/data/window_start_day=2026-11-01/00001-0-232ae620-b24a-47cb-a5b6-e6df7630629e-00002.parquet | 2 | 3885
+s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/data/window_start_day=2026-11-01/00000-0-9d6449e4-cd2a-4a52-a747-40bd2e35a98e-00001.parquet | 15 | 4191
+
+== Glue get-table
+{
+    "tipo": "ICEBERG",
+    "metadata_location": "s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/metadata/00005-65e5328a-b81b-47a8-b0ee-51d5f1ed4aa7.metadata.json",
+    "previous": "s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes/metadata/00004-cc5f3d40-cc00-48e9-bc97-2fcb98cb6176.metadata.json",
+    "location": "s3://data-platform-dev-659500704179-bucket/lakehouse/lakehouse_db.db/ventanas_clientes"
+}
+== S3 metadata/ (aws s3 ls muestra hora local UTC-3)
+2026-11-01 18:52:18       1913 00000-d0ef9405-69bc-4a41-8621-eb30c4632bd5.metadata.json
+2026-11-01 19:11:26       4152 00001-b9a6329f-7917-4680-a2cb-6266a7f9c6ae.metadata.json
+2026-11-01 19:12:24       5561 00002-b959cc8d-528c-4c55-8777-2010e03c49e1.metadata.json
+2026-11-01 19:13:24       6970 00003-53cf891a-c2dc-45e1-8cd8-ebb9d97d1c5a.metadata.json
+2026-11-01 19:14:24       8379 00004-cc5f3d40-cc00-48e9-bc97-2fcb98cb6176.metadata.json
+2026-11-01 19:15:24       9784 00005-65e5328a-b81b-47a8-b0ee-51d5f1ed4aa7.metadata.json
+2026-11-01 19:11:26       8259 0a1516d6-b27c-4f59-9879-9edf0db25fa0-m0.avro
+2026-11-01 19:14:24       8228 140256d4-c95f-431a-8907-dfd4dc8da89d-m0.avro
+2026-11-01 19:15:24       8232 20895026-67bb-4f42-b7f9-92dc66a49f7a-m0.avro
+2026-11-01 19:13:24       8248 6d145414-9fa9-43e3-a53c-7d17796e23f7-m0.avro
+2026-11-01 19:12:24       8238 d9926698-3213-49fb-97b0-573bbb7a433c-m0.avro
+2026-11-01 19:11:26       4496 snap-3077757530987269976-1-0a1516d6-b27c-4f59-9879-9edf0db25fa0.avro
+2026-11-01 19:14:24       4664 snap-3876041861386617884-1-140256d4-c95f-431a-8907-dfd4dc8da89d.avro
+2026-11-01 19:12:24       4575 snap-4210774569761478939-1-d9926698-3213-49fb-97b0-573bbb7a433c.avro
+2026-11-01 19:15:24       4711 snap-500829894777509235-1-20895026-67bb-4f42-b7f9-92dc66a49f7a.avro
+2026-11-01 19:13:24       4621 snap-6388884917182056901-1-6d145414-9fa9-43e3-a53c-7d17796e23f7.avro
