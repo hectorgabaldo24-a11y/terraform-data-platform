@@ -23,17 +23,17 @@ Corrida del 2026-11-10 en la cuenta `659500704179` (`us-east-1`); todas las hora
 | JOIN stream + Iceberg | `analytics.v_clientes_stream_vs_lakehouse`. Redshift lee la tabla con `file_format = Iceberg` (10 archivos, 59 filas) |
 | Rol de analistas | `IAMR:data-platform-dev-redshift-analyst` con `analytics_role`. Lee analytics y el lakehouse; en `stream` y `kds` recibe *permission denied* |
 
-## Capturas de consola pendientes
+## Capturas de consola
 
-Guardarlas en `docs/evidencias-redshift/` con estos nombres y regenerar el PDF con `python scripts/generar_informe_pdf.py`. Cada imagen reemplaza su recuadro "Captura pendiente".
+Están en `docs/evidencias-redshift/` y se incluyen en el PDF, que se regenera con `python scripts/generar_informe_pdf.py`.
 
-Antes de las capturas: poner `redshift_refresh_schedule_enabled = true`, ejecutar `terraform apply` y correr el productor durante 2 o 3 minutos. Al terminar, volver a `false` y aplicar. En **Query Editor v2**, conectarse al workgroup `data-platform-dev-analytics` con **AWS Secrets Manager**, usando el secreto que devuelve `terraform output redshift_admin_secret_arn`, base `analytics`.
+Para las capturas de Redshift se puso `redshift_refresh_schedule_enabled = true`, se aplicó y se dejó correr el productor de 2 a 3 minutos; al terminar se volvió a `false` y se aplicó de nuevo. La conexión de **Query Editor v2** fue al workgroup `data-platform-dev-analytics` con **AWS Secrets Manager**, usando el secreto de `terraform output redshift_admin_secret_arn` y la base `analytics`.
 
-| Archivo | Qué capturar |
-|---------|--------------|
-| `consola-redshift-mv-stream.png` | Query Editor v2 con la consulta V3 (`stream.mv_eventos`) y filas recién llegadas |
+| Archivo | Qué muestra |
+|---------|-------------|
+| `consola-redshift-mv-stream.png` | Query Editor v2 con `SELECT * FROM stream.mv_eventos`: filas llegadas entre las 16:30 y las 16:38 UTC, ingeridas de 7 a 60 s después de llegar a Kinesis |
 | `consola-redshift-join-iceberg.png` | Query Editor v2 con `SELECT * FROM analytics.v_clientes_stream_vs_lakehouse` |
-| `consola-redshift-workgroup.png` | Redshift Serverless → Namespace: rol IAM por defecto y workgroup no público |
+| `consola-redshift-workgroup.png` | Redshift Serverless → Panel: namespace y workgroup `data-platform-dev-analytics` en estado *Available* |
 | `consola-athena-snapshots.png` | Athena (workgroup `data-platform-dev-lakehouse`): `SELECT * FROM "ventanas_clientes$snapshots"` |
 | `consola-glue-iceberg.png` | Glue → Tables → `ventanas_clientes` (formato Iceberg, esquema) |
 | `consola-cloudwatch-dashboard.png` | CloudWatch → Dashboards → `data-platform-dev-streaming-analytics` |
